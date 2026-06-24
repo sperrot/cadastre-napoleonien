@@ -1,10 +1,10 @@
-# Cadastre napoléonien — annuaire cartographié participatif
+# Cadastre napoléonien — annuaire cartographique
 
 Visualiseur web léger pour retrouver, par commune, les plans du **cadastre
 napoléonien** numérisés par les archives départementales (tableaux
 d'assemblage, sections, feuilles).
 
-> **État : V0.0 — « annuaire cartographié ».**
+> **État : V0.0 — « annuaire cartographique ».**
 > Carte + recherche de commune + liens vers les plans d'archives.
 > Aucune image hébergée, aucun géoréférencement (paliers suivants).
 
@@ -65,9 +65,7 @@ Pour afficher les liens d'archives, brancher Supabase :
 
 ## Feuille de route
 
-- **V0.0** ✅ Annuaire cartographié (lecture).
-- **V0.1** Contribution participative : soumission de liens par commune
-  (Supabase Auth + policy d'insertion).
+- **V0.0** ✅ Annuaire cartographique (lecture).
 - **V0.2** Superposition d'emprises approximatives (`ImageOverlay` par bbox).
 - **V0.3** Géoréférencement réel via [Allmaps](https://allmaps.org) (annotations
   JSON, rendu déformé côté navigateur, sans serveur de tuiles) + sections au
