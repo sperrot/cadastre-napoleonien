@@ -41,7 +41,14 @@ create table if not exists document (
   feuille_num     int,                            -- numéro de feuille (sections en plusieurs feuilles)
   annee           int,                            -- millésime du plan (~1807-1850)
   archive_url     text not null,                  -- lien vers le viewer de l'archive
-  iiif_url        text,                           -- manifest/image IIIF si dispo (palier georef)
+  source          text,                           -- attribution CRPA, ex. "Archives départementales du Jura"
+  source_url      text,                           -- portail de l'institution (mention cliquable)
+  cote            text,                           -- cote archivistique, ex. "2047W/563"
+  iiif_url        text,                           -- URL de l'Image API IIIF si distincte du manifeste
+  iiif_manifest   text,                           -- URL du manifeste IIIF (Allmaps)
+  image_url       text,                           -- vignette / dao
+  licence         text,                           -- ex. "Licence Ouverte", "Restreint"
+  licence_overlay_ok boolean default false,       -- la licence autorise overlay/georef ?
   bbox            geometry(Polygon, 4326),        -- emprise approximative (palier bbox)
   georef          jsonb,                          -- annotation de géoréférencement Allmaps
   statut          text not null default 'lien'

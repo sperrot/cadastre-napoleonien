@@ -89,7 +89,7 @@ async function fetchDocuments(insee) {
   if (!sb) return null; // Supabase non configuré
   const { data, error } = await sb
     .from("document")
-    .select("type, section_lettre, feuille_num, annee, archive_url, statut")
+    .select("type, section_lettre, feuille_num, annee, archive_url, source, source_url, statut")
     .eq("insee", insee)
     .order("type")
     .order("section_lettre", { nullsFirst: true })
@@ -142,8 +142,26 @@ function renderCommune(c, docs, loading) {
       for (const d of group) html += docItem(d);
       html += `</div>`;
     }
+    html += sourceFooter(docs);
   }
   el.innerHTML = html;
+}
+
+/* Mention d'attribution (CRPA) : une ligne par source distincte. */
+function sourceFooter(docs) {
+  const seen = new Map();
+  for (const d of docs) {
+    if (d.source && !seen.has(d.source)) seen.set(d.source, d.source_url);
+  }
+  if (!seen.size) return "";
+  const items = [...seen]
+    .map(([name, url]) =>
+      url
+        ? `<a href="${escape(url)}" target="_blank" rel="noopener">${escape(name)}</a>`
+        : escape(name)
+    )
+    .join(", ");
+  return `<p class="source-note">Source : ${items}</p>`;
 }
 
 function docItem(d) {

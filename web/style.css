@@ -115,3 +115,14 @@ header .tagline { margin: 2px 0 0; font-size: .8rem; color: var(--muted); }
   padding: 12px;
 }
 .empty-state strong { color: var(--ink); }
+
+.source-note {
+  margin-top: 16px;
+  padding-top: 10px;
+  border-top: 1px solid var(--line);
+  font-size: .75rem;
+  color: var(--muted);
+  line-height: 1.4;
+}
+.source-note a { color: var(--muted); text-decoration: underline; }
+.source-note a:hover { color: var(--accent); }
