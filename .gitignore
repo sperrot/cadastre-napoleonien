@@ -4,6 +4,10 @@ web/config.js
 # Sorties générées par le harvester (à régénérer)
 harvest/seed_*.sql
 
+# Python
+__pycache__/
+*.pyc
+
 # Divers
 .DS_Store
 Thumbs.db

@@ -32,7 +32,7 @@ qu'**au 1er run local** du harvester sur un échantillon de feuilles.
 | Département | Lien XML arbre | Licence | IIIF dispo | Harvester |
 |---|---|---|---|---|
 | **Seine-Saint-Denis (93)** — FRAD093 · *pilote* | [findingaid `2679af1…`](https://francearchives.gouv.fr/findingaid/2679af120dcec5557878b634c3701f842b1d806e) · sous-nœud [facomponent « Plans cadastraux » `8c9077ce…`](https://francearchives.gouv.fr/facomponent/8c9077ce3826a2676417514c55903ae704aff91b) | ✅ OK | ✅ OK | 🟡 **en cours** — `python harvest_francearchives.py 8c9077ce3826a2676417514c55903ae704aff91b facomponent` |
-| **Calvados (14)** — FRAD014 | [findingaid A→D `d17231b4…`](https://francearchives.gouv.fr/findingaid/d17231b4a0689ac142534b2a6ee4fc0c190338a1) · RDF : `…/d17231b4…0338a1.rdf` | ⏳ à déterminer (local) | ⏳ à déterminer (local) | `python harvest_francearchives.py d17231b4a0689ac142534b2a6ee4fc0c190338a1` — **à lancer** |
+| **Calvados (14)** — FRAD014 | A→D : [findingaid `d17231b4…`](https://francearchives.gouv.fr/findingaid/d17231b4a0689ac142534b2a6ee4fc0c190338a1)<br>E→Le Me : [findingaid `c89ef2c4…`](https://francearchives.gouv.fr/findingaid/c89ef2c4dfe0d59b57752e97961d4f0b9d067601) | ⏳ à déterminer (local) | ⏳ à déterminer (local) | `python harvest_francearchives.py d17231b4a0689ac142534b2a6ee4fc0c190338a1`<br>`python harvest_francearchives.py c89ef2c4dfe0d59b57752e97961d4f0b9d067601` — **à lancer** |
 
 ### Légende statuts
 - **Lien XML arbre** : URL du finding aid FranceArchives (le `.rdf` est l'export téléchargé).
@@ -52,10 +52,9 @@ qu'**au 1er run local** du harvester sur un échantillon de feuilles.
 - Détail : voir [`seine-saint-denis/NOTES.md`](seine-saint-denis/NOTES.md).
 
 ### Calvados (14)
-- Le finding aid déposé (`d17231b4…`, identifiant `FRAD014_Cadastre_Ablon_Ducy-Sainte-Marguerite`)
-  ne couvre que les **communes de A à D** (Ablon → Ducy-Sainte-Marguerite).
-- **Il manque les finding aids frères** pour les communes **E → Z** : à récupérer
-  sur FranceArchives (même fonds FRAD014) et déposer dans `calvados/`.
-- 198 communes/sous-nœuds au 1er niveau de cet arbre A→D.
+- Fonds découpé alphabétiquement en plusieurs finding aids (FRAD014). Déposés :
+  - **A → D** (`d17231b4…`, Ablon → Ducy-Sainte-Marguerite) — 198 sous-nœuds.
+  - **E → Le Me** (`c89ef2c4…`, Écrammeville → Le-Mesnil-Villement) — 153 sous-nœuds.
+- **Manque encore** la/les tranche(s) **Le Me → Z** : à récupérer et déposer dans `a_traiter/`.
 
 Détail : voir [`calvados/NOTES.md`](calvados/NOTES.md).

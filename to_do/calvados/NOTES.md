@@ -7,8 +7,8 @@ Service FranceArchives : `service/33495` (Archives départementales du Calvados)
 | Fichier | Plage communes | ID FranceArchives | Identifiant cote | Enfants niv.1 | Statut |
 |---|---|---|---|---|---|
 | [`findingaid_A-D_d17231b4….xml`](findingaid_A-D_d17231b4a0689ac142534b2a6ee4fc0c190338a1.xml) | A → D (Ablon → Ducy-Ste-Marguerite) | `d17231b4a0689ac142534b2a6ee4fc0c190338a1` | `FRAD014_Cadastre_Ablon_Ducy-Sainte-Marguerite` | 198 | déposé, **harvester à lancer** |
-| _(manquant)_ | D/E → … | — | — | — | **à récupérer** |
-| _(manquant)_ | … → Z | — | — | — | **à récupérer** |
+| [`findingaid_E-LeMe_c89ef2c4….xml`](findingaid_E-LeMe_c89ef2c4dfe0d59b57752e97961d4f0b9d067601.xml) | E → Le Me (Écrammeville → Le-Mesnil-Villement) | `c89ef2c4dfe0d59b57752e97961d4f0b9d067601` | `FRAD014_Cadastre_Ecrammeville_Le-Mesnil-Villement` | 153 | déposé, **harvester à lancer** |
+| _(manquant)_ | Le Me → Z | — | — | — | **à récupérer** |
 
 ## Structure RDF observée (racine A→D)
 

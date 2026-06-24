@@ -56,7 +56,7 @@ session.headers.update(HEADERS)
 REDIRECT_RE = re.compile(r"window\.location\.href='(/redirect_[^']+)'")
 
 # Caches pour éviter les requêtes répétées
-_rdf_cache, _insee_cache, _licence_cache = {}, {}, {}
+_rdf_cache, _insee_cache, _licence_cache, _service_cache = {}, {}, {}, {}
 
 
 def get(url: str, accept: str = None) -> requests.Response:
@@ -86,29 +86,32 @@ def fetch_graph(etype: str, eid: str) -> Graph:
         f"{BASE}/{etype}/{eid}/rdf",
         f"{BASE}/{etype}/{eid}",          # content-negotiation via Accept
     ]
-    for url in candidates:
-        try:
-            r = get(url, accept="application/rdf+xml")
-        except requests.RequestException:
-            continue
-        if r.status_code == 200 and "rdf:RDF" in r.text[:4000]:
-            g = Graph()
-            g.parse(data=r.content, format="xml")
-            _rdf_cache[key] = g
-            time.sleep(SLEEP)
-            return g
-    raise RuntimeError(
-        f"Aucun export RDF n'a répondu pour {etype}/{eid}. "
-        f"Vérifie le motif d'URL (copie le lien du bouton « RDF/XML » d'une notice)."
-    )
+    for attempt in range(3):                 # retries (transitoire : cookie/débit)
+        for url in candidates:
+            try:
+                r = get(url, accept="application/rdf+xml")
+            except requests.RequestException:
+                continue
+            if r.status_code == 200 and "rdf:RDF" in r.text[:4000]:
+                g = Graph()
+                g.parse(data=r.content, format="xml")
+                _rdf_cache[key] = g
+                time.sleep(SLEEP)
+                return g
+        time.sleep(2 * (attempt + 1))         # backoff avant nouvelle tentative
+    # Échec persistant : on n'interrompt pas la descente, on saute le nœud.
+    sys.stderr.write(f"  ⚠ pas de RDF pour {etype}/{eid} — nœud ignoré\n")
+    _rdf_cache[key] = None
+    return None
 
 
 def eid_of(uri: str) -> str:
     return uri.rstrip("/").split("/")[-1]
 
 
-# Titres de branches à exclure d'office (hors cadastre napoléonien)
-EXCLUDE_RE = re.compile(r"rénov|renov|intendance", re.IGNORECASE)
+# Titres de branches à exclure d'office (hors cadastre napoléonien) :
+# cadastre rénové, plans d'intendance, plans par masse de culture.
+EXCLUDE_RE = re.compile(r"rénov|renov|intendance|masse de culture", re.IGNORECASE)
 
 
 def first_str(g: Graph, subj, pred):
@@ -140,6 +143,8 @@ def walk(etype: str, eid: str, leaves: list, seen: set, parent_title: str = None
         return
     seen.add(eid)
     g = fetch_graph(etype, eid)
+    if g is None:                 # nœud injoignable : on saute (déjà loggé)
+        return
     subj = URIRef(f"{BASE}/{etype}/{eid}")
 
     title = first_str(g, subj, RICO.title) or ""
@@ -216,6 +221,7 @@ def extract_leaf(g: Graph, subj: URIRef, manifest: str, commune_hint: str = None
                 image = re.sub(r"//+", "/", u).replace("https:/", "https://")
 
     licence, overlay_ok = resolve_licence(service, manifest)
+    source_name, source_url = resolve_service(service)
 
     return {
         "title": title,
@@ -227,10 +233,27 @@ def extract_leaf(g: Graph, subj: URIRef, manifest: str, commune_hint: str = None
         "facomponent": str(subj).replace(f"{BASE}/", f"{BASE}/fr/"),
         "iiif_manifest": manifest,
         "image_url": image,
-        "source_service": service,
+        "source": source_name,
+        "source_url": source_url,
         "licence": licence,
         "licence_overlay_ok": overlay_ok,
     }
+
+
+def resolve_service(uri: str):
+    """service/NNNN → (libellé lisible, URL de la fiche service)."""
+    if not uri:
+        return (None, None)
+    if uri in _service_cache:
+        return _service_cache[uri]
+    name = None
+    g = fetch_graph("service", eid_of(uri))
+    if g is not None:
+        s = URIRef(uri)
+        name = first_str(g, s, RICO.name) or first_str(g, s, RDFS.label)
+    res = (name, uri.replace(f"{BASE}/", f"{BASE}/fr/"))
+    _service_cache[uri] = res
+    return res
 
 
 GENERIC_TITLES = ("tableau", "section", "plan", "feuille", "matrice",
@@ -247,8 +270,9 @@ def commune_from_titles(leaf_title: str, parent_title: str):
 
 
 def classify(title: str) -> str:
+    # Règle métier : "tableau" → tableau d'assemblage ; "section" → section.
     t = title.lower()
-    if "assemblage" in t:
+    if "tableau" in t:
         return "tableau_assemblage"
     if "section" in t:
         return "section"
@@ -261,21 +285,23 @@ def classify(title: str) -> str:
 def resolve_location(loc_id: str):
     if loc_id in _insee_cache:
         return _insee_cache[loc_id]
-    try:
-        g = fetch_graph("location", loc_id)
-        label = None
+    g = fetch_graph("location", loc_id)
+    label = None
+    if g is not None:
         for _, _, o in g.triples((None, RDFS.label, None)):
             label = str(o)
             break
-        _insee_cache[loc_id] = label
-        return label
-    except RuntimeError:
-        return None
+    _insee_cache[loc_id] = label
+    return label
 
 
 def insee_of(commune_name: str):
-    # nettoie « SEVRAN [commune] » → « SEVRAN »
-    name = re.sub(r"\[.*?\]", "", commune_name or "").strip()
+    # normalise : « Aubervilliers (Seine-Saint-Denis, France) » → « Aubervilliers »,
+    # « SEVRAN [commune] » → « SEVRAN », « Bobigny, Bondy, … » → « Bobigny »
+    name = re.sub(r"\(.*?\)", "", commune_name or "")   # parenthèses (dept, pays)
+    name = re.sub(r"\[.*?\]", "", name)                  # crochets ([commune], [date])
+    name = name.split(",")[0]                            # 1re commune si liste
+    name = name.strip(" . ")
     if not name:
         return None
     if name in _insee_cache:
@@ -327,24 +353,23 @@ def sql_escape(v):
     return "'" + str(v).replace("'", "''") + "'"
 
 
-def emit_sql(leaves):
+def emit_sql(leaves, out=sys.stdout):
     cols = ("insee", "type", "annee", "cote", "archive_url", "iiif_manifest",
             "image_url", "source", "source_url", "licence", "licence_overlay_ok", "statut")
-    print("-- Généré par harvest_francearchives.py")
-    print(f"-- {len([l for l in leaves if l['insee']])} notices avec INSEE / {len(leaves)} feuilles\n")
+    print("-- Généré par harvest_francearchives.py", file=out)
+    print(f"-- {len([l for l in leaves if l['insee']])} notices avec INSEE / {len(leaves)} feuilles\n", file=out)
     for l in leaves:
         if not l["insee"]:
             sys.stderr.write(f"  ⚠ INSEE introuvable pour : {l['commune']} ({l['title']})\n")
             continue
         statut = "georef" if l["licence_overlay_ok"] else "lien"
-        # source lisible : on garde l'URI service ; à enrichir si besoin
         vals = [
             l["insee"], l["type"], l["annee"], l["cote"], l["facomponent"],
-            l["iiif_manifest"], l["image_url"], l["source_service"], None,
+            l["iiif_manifest"], l["image_url"], l["source"], l["source_url"],
             l["licence"], l["licence_overlay_ok"], statut,
         ]
         print(f"insert into document ({', '.join(cols)}) values "
-              f"({', '.join(sql_escape(v) for v in vals)});")
+              f"({', '.join(sql_escape(v) for v in vals)});", file=out)
 
 
 def main():
@@ -355,6 +380,7 @@ def main():
                     choices=["findingaid", "facomponent"])
     ap.add_argument("--year-min", type=int, default=YEAR_MIN)
     ap.add_argument("--year-max", type=int, default=YEAR_MAX)
+    ap.add_argument("--out", help="fichier SQL de sortie (UTF-8). Défaut : stdout.")
     args = ap.parse_args()
     YEAR_MIN, YEAR_MAX = args.year_min, args.year_max
 
@@ -363,7 +389,13 @@ def main():
                      f"(période {YEAR_MIN}-{YEAR_MAX}) …\n")
     walk(args.etype, args.eid, leaves, seen)
     sys.stderr.write(f"\n{len(leaves)} feuilles collectées.\n")
-    emit_sql(leaves)
+
+    if args.out:
+        with open(args.out, "w", encoding="utf-8", newline="\n") as fh:
+            emit_sql(leaves, out=fh)
+        sys.stderr.write(f"→ SQL écrit dans {args.out}\n")
+    else:
+        emit_sql(leaves)
 
 
 if __name__ == "__main__":
