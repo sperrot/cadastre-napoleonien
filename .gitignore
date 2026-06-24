@@ -3,6 +3,7 @@ web/config.js
 
 # Sorties générées par le harvester (à régénérer)
 harvest/seed_*.sql
+harvest/*.log
 
 # Python
 __pycache__/
