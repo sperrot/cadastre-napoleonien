@@ -62,9 +62,13 @@ map.on("load", () => {
 });
 
 /* --- Sélection d'une commune (objet { nom, code, codeDepartement, centre, contour }) --- */
+let selectionToken = 0; // ignore les résolutions async d'une commune déjà remplacée
+
 async function selectCommune(c) {
+  const token = ++selectionToken;
   hideResults();
   searchInput.value = c.nom;
+  clearOverlay();
 
   if (c.contour && map.getSource("commune")) {
     map.getSource("commune").setData({
@@ -72,6 +76,7 @@ async function selectCommune(c) {
       geometry: c.contour,
       properties: {},
     });
+    setCommuneColor(STATUS_COLOR.loading); // gris : statut en cours d'évaluation
     const b = new maplibregl.LngLatBounds();
     eachCoord(c.contour, ([lng, lat]) => b.extend([lng, lat]));
     map.fitBounds(b, { padding: 40, maxZoom: 14 });
@@ -81,7 +86,18 @@ async function selectCommune(c) {
 
   renderCommune(c, null, true); // état "chargement"
   const docs = await fetchDocuments(c.code);
+  if (token !== selectionToken) return;
   renderCommune(c, docs, false);
+
+  // Statut de géoréférencement → couleur du contour (+ overlay Allmaps si calé)
+  if (Array.isArray(docs)) {
+    const st = await communeStatus(docs);
+    if (token !== selectionToken) return;
+    setCommuneColor(STATUS_COLOR[st.status]);
+    if (st.status === "georef" && st.annotationUrl) showOverlay(st.annotationUrl);
+  } else {
+    setCommuneColor(STATUS_COLOR.loading); // Supabase non connecté : neutre
+  }
 }
 
 /* --- Lecture des liens d'archives dans Supabase --- */
@@ -202,6 +218,80 @@ async function hydrateGeoref(root) {
       : `<a class="georef-btn" href="${escape(
           editorLink(manifest)
         )}" target="_blank" rel="noopener">Géoréférencer ce plan ↗</a>`;
+  }
+}
+
+/* ------------------------------------------------------------------ *
+ * Statut de géoréférencement par commune → couleur du contour
+ *   vert    : annotation Allmaps existante (overlay affiché)
+ *   jaune   : tableau d'assemblage IIIF + licence OK, pas encore calé
+ *   orange  : assemblage présent mais géoréf non accessible
+ *             (licence overlay refusée, ou pas de manifeste IIIF)
+ *   rouge   : aucun tableau d'assemblage
+ * ------------------------------------------------------------------ */
+const STATUS_COLOR = {
+  georef: "#2e9e4f",       // vert
+  georef_ready: "#e0a800", // jaune
+  iiif_only: "#e07b1a",    // orange
+  absent: "#c0392b",       // rouge
+  loading: "#9a948c",      // gris (neutre / en cours)
+};
+
+function setCommuneColor(color) {
+  if (!map.getLayer("commune-fill")) return;
+  map.setPaintProperty("commune-fill", "fill-color", color);
+  map.setPaintProperty("commune-line", "line-color", color);
+}
+
+async function communeStatus(docs) {
+  const assemblages = docs.filter((d) => d.type === "tableau_assemblage");
+  if (!assemblages.length) return { status: "absent" };
+
+  const withIiif = assemblages.find((d) => d.iiif_manifest);
+  if (!withIiif) return { status: "iiif_only" }; // assemblage sans IIIF → non géoréférençable
+  if (!withIiif.licence_overlay_ok)
+    return { status: "iiif_only", manifest: withIiif.iiif_manifest }; // licence overlay refusée
+
+  const annotationUrl = await resolveAnnotation(withIiif.iiif_manifest);
+  return annotationUrl
+    ? { status: "georef", manifest: withIiif.iiif_manifest, annotationUrl }
+    : { status: "georef_ready", manifest: withIiif.iiif_manifest };
+}
+
+/* ------------------------------------------------------------------ *
+ * Overlay du plan calé, rendu sur NOTRE carte via @allmaps/maplibre.
+ * Import dynamique isolé : si le module échoue (CDN…), seul l'overlay est
+ * désactivé — la carte et la coloration des contours restent intactes.
+ * ------------------------------------------------------------------ */
+let warpedCtorPromise = null;
+const loadWarpedLayer = () =>
+  (warpedCtorPromise ||= import("https://esm.run/@allmaps/maplibre").then(
+    (m) => m.WarpedMapLayer
+  ));
+
+let warpedLayer = null;
+async function showOverlay(annotationUrl) {
+  try {
+    if (!warpedLayer) {
+      const WarpedMapLayer = await loadWarpedLayer();
+      warpedLayer = new WarpedMapLayer("allmaps-overlay");
+      // sous le contour pour garder la couleur de statut visible au-dessus
+      map.addLayer(warpedLayer, "commune-fill");
+    }
+    await warpedLayer.clear();
+    await warpedLayer.addGeoreferenceAnnotationByUrl(annotationUrl);
+  } catch (e) {
+    console.warn("Overlay Allmaps indisponible:", e);
+  }
+}
+
+function clearOverlay() {
+  if (warpedLayer) {
+    try {
+      warpedLayer.clear();
+    } catch (e) {
+      /* no-op */
+    }
   }
 }
 
