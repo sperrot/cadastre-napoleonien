@@ -38,6 +38,7 @@ const map = new maplibregl.Map({
   },
   center: [2.5, 46.6], // France métropolitaine
   zoom: 5,
+  maxPitch: 0, // le plugin Allmaps (overlay) ne supporte pas le pitch
 });
 map.addControl(new maplibregl.NavigationControl(), "top-right");
 
@@ -274,7 +275,7 @@ async function showOverlay(annotationUrl) {
   try {
     if (!warpedLayer) {
       const WarpedMapLayer = await loadWarpedLayer();
-      warpedLayer = new WarpedMapLayer("allmaps-overlay");
+      warpedLayer = new WarpedMapLayer({ layerId: "allmaps-overlay" });
       // sous le contour pour garder la couleur de statut visible au-dessus
       map.addLayer(warpedLayer, "commune-fill");
     }
