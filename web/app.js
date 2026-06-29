@@ -42,8 +42,68 @@ const map = new maplibregl.Map({
 });
 map.addControl(new maplibregl.NavigationControl(), "top-right");
 
-/* Source + couches pour le contour de la commune sélectionnée */
+/* ------------------------------------------------------------------ *
+ * Codes couleur de statut — partagés par les contours communes ET
+ * départements (même stroke / même fill).
+ * ------------------------------------------------------------------ */
+const STATUS_COLOR = {
+  georef: "#2e9e4f",       // vert
+  georef_ready: "#e0a800", // jaune
+  iiif_only: "#e07b1a",    // orange
+  absent: "#c0392b",       // rouge
+  loading: "#9a948c",      // gris (neutre / en cours)
+};
+
+/* Statut par département (provisoire, en dur ; à brancher sur la base
+ * ensuite). Départements absents de la table → stroke neutre, sans fill. */
+const DEPT_STATUS = {
+  "88": "georef_ready", // Vosges
+  "95": "georef_ready", // Val-d'Oise
+  "93": "georef_ready", // Seine-Saint-Denis
+  "01": "georef_ready", // Ain
+  "31": "georef_ready", // Haute-Garonne
+};
+const DEPT_NEUTRAL = "#b8b2a8"; // stroke des départements sans statut
+
+// code département → couleur de statut, sinon neutre
+function deptColorExpr() {
+  const expr = ["match", ["get", "code"]];
+  for (const [code, status] of Object.entries(DEPT_STATUS))
+    expr.push(code, STATUS_COLOR[status]);
+  expr.push(DEPT_NEUTRAL);
+  return expr;
+}
+// fill seulement pour les départements à statut (même opacité que les communes)
+function deptFillOpacityExpr() {
+  return ["case", ["in", ["get", "code"], ["literal", Object.keys(DEPT_STATUS)]], 0.12, 0];
+}
+
+/* Source + couches : départements (au démarrage) puis commune sélectionnée */
 map.on("load", () => {
+  // Contours des départements — sous les couches commune
+  map.addSource("departements", {
+    type: "geojson",
+    data: "https://raw.githubusercontent.com/gregoiredavid/france-geojson/master/departements-version-simplifiee.geojson",
+  });
+  map.addLayer({
+    id: "departements-fill",
+    type: "fill",
+    source: "departements",
+    paint: {
+      "fill-color": deptColorExpr(),
+      "fill-opacity": deptFillOpacityExpr(),
+    },
+  });
+  map.addLayer({
+    id: "departements-line",
+    type: "line",
+    source: "departements",
+    paint: {
+      "line-color": deptColorExpr(),
+      "line-width": 2,
+    },
+  });
+
   map.addSource("commune", {
     type: "geojson",
     data: { type: "FeatureCollection", features: [] },
@@ -229,15 +289,8 @@ async function hydrateGeoref(root) {
  *   orange  : assemblage présent mais géoréf non accessible
  *             (licence overlay refusée, ou pas de manifeste IIIF)
  *   rouge   : aucun tableau d'assemblage
+ * (codes couleur définis en tête de fichier : STATUS_COLOR)
  * ------------------------------------------------------------------ */
-const STATUS_COLOR = {
-  georef: "#2e9e4f",       // vert
-  georef_ready: "#e0a800", // jaune
-  iiif_only: "#e07b1a",    // orange
-  absent: "#c0392b",       // rouge
-  loading: "#9a948c",      // gris (neutre / en cours)
-};
-
 function setCommuneColor(color) {
   if (!map.getLayer("commune-fill")) return;
   map.setPaintProperty("commune-fill", "fill-color", color);
