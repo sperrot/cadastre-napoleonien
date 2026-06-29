@@ -486,3 +486,367 @@ function escape(s) {
       ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[m])
   );
 }
+
+/* ================================================================== *
+ * Onglet « Documents » — GED (drill-down Départements → Communes)
+ *
+ * Données : un seul fetch de la table `document`, regroupé par
+ * département (préfixe INSEE) puis commune. Les noms (dépt + communes)
+ * sont résolus via geo.api.gouv.fr (la table `commune` peut être vide).
+ * ================================================================== */
+
+const docsGridEl = () => document.getElementById("docs-grid");
+
+/* --- Bascule Carte / Documents --- */
+function showView(view) {
+  const isMap = view === "map";
+  document.getElementById("layout").hidden = !isMap;
+  document.getElementById("docs-view").hidden = isMap;
+  document
+    .querySelectorAll("#view-toggle button")
+    .forEach((b) => b.classList.toggle("active", b.dataset.view === view));
+  if (isMap) map.resize(); // MapLibre recalcule sa taille au retour de l'onglet
+  else openDocs();
+}
+document.querySelectorAll("#view-toggle button").forEach((b) =>
+  b.addEventListener("click", () => showView(b.dataset.view))
+);
+
+/* --- Données : Map(dept -> { code, nom, communes: Map(insee -> {insee,nom,docs[]}) }) --- */
+let docsData = null;
+let docsSearchList = []; // index plat pour l'autocomplétion
+
+async function loadDocsData() {
+  if (docsData || !sb) return docsData;
+  const { data, error } = await sb
+    .from("document")
+    .select(
+      "insee,type,section_lettre,feuille_num,annee,cote,archive_url,iiif_manifest,image_url,licence_overlay_ok"
+    );
+  if (error) {
+    console.error("Supabase (docs):", error.message);
+    return null;
+  }
+  const byDept = new Map();
+  for (const d of data) {
+    const dept = (d.insee || "").slice(0, 2);
+    if (!byDept.has(dept))
+      byDept.set(dept, { code: dept, nom: dept, communes: new Map() });
+    const db = byDept.get(dept);
+    if (!db.communes.has(d.insee))
+      db.communes.set(d.insee, { insee: d.insee, nom: d.insee, docs: [] });
+    db.communes.get(d.insee).docs.push(d);
+  }
+  docsData = byDept;
+  await resolveNames(byDept);
+  buildDocsSearch();
+  return docsData;
+}
+
+// Noms dépt + communes via geo.api (1 appel/dept). Tolérant aux erreurs.
+async function resolveNames(byDept) {
+  try {
+    const res = await fetch("https://geo.api.gouv.fr/departements?fields=nom,code");
+    const map = new Map((await res.json()).map((x) => [x.code, x.nom]));
+    for (const [code, db] of byDept) if (map.has(code)) db.nom = map.get(code);
+  } catch (e) {
+    /* garde le code dept */
+  }
+  await Promise.all(
+    [...byDept.values()].map(async (db) => {
+      try {
+        const res = await fetch(
+          `https://geo.api.gouv.fr/communes?codeDepartement=${db.code}&fields=nom,code`
+        );
+        const map = new Map((await res.json()).map((x) => [x.code, x.nom]));
+        for (const [insee, c] of db.communes)
+          if (map.has(insee)) c.nom = map.get(insee);
+      } catch (e) {
+        /* garde l'insee */
+      }
+    })
+  );
+}
+
+function buildDocsSearch() {
+  docsSearchList = [];
+  for (const db of docsData.values())
+    for (const c of db.communes.values())
+      docsSearchList.push({
+        insee: c.insee,
+        nom: c.nom,
+        dept: db.code,
+        deptNom: db.nom,
+        hay: `${c.nom} ${c.insee} ${db.nom}`.toLowerCase(),
+      });
+}
+
+/* --- Entrée dans l'onglet --- */
+async function openDocs() {
+  const grid = docsGridEl();
+  if (!sb) {
+    grid.innerHTML = `<p class="empty-state">Base non connectée — renseignez Supabase dans <code>config.js</code>.</p>`;
+    return;
+  }
+  if (!docsData) {
+    grid.innerHTML = `<p class="empty-state">Chargement des documents…</p>`;
+    await loadDocsData();
+  }
+  if (docsData) renderDeptCards();
+}
+
+/* --- Fil d'Ariane --- */
+function setBreadcrumb(crumbs) {
+  const nav = document.getElementById("docs-breadcrumb");
+  nav.innerHTML = crumbs
+    .map((c, i) =>
+      c.onClick
+        ? `<a href="#" data-i="${i}">${escape(c.label)}</a>`
+        : `<span>${escape(c.label)}</span>`
+    )
+    .join(`<span class="sep">›</span>`);
+  nav.querySelectorAll("a[data-i]").forEach((a) =>
+    a.addEventListener("click", (e) => {
+      e.preventDefault();
+      crumbs[+a.dataset.i].onClick();
+    })
+  );
+}
+
+/* --- Niveau 0 : cards départements --- */
+function renderDeptCards() {
+  setBreadcrumb([{ label: "Départements" }]);
+  const grid = docsGridEl();
+  const depts = [...docsData.values()].sort((a, b) => a.code.localeCompare(b.code));
+  grid.innerHTML = depts.map(deptCard).join("");
+  grid
+    .querySelectorAll("[data-dept]")
+    .forEach((el) => el.addEventListener("click", () => openDept(el.dataset.dept)));
+  hydrateThumbs(grid);
+}
+
+function firstImageOfDept(db) {
+  for (const c of db.communes.values())
+    for (const d of c.docs) if (d.image_url) return d.image_url;
+  return null;
+}
+
+function firstManifestOfDept(db) {
+  for (const c of db.communes.values())
+    for (const d of c.docs) if (d.iiif_manifest) return d.iiif_manifest;
+  return null;
+}
+
+function deptCard(db) {
+  const nbCommunes = db.communes.size;
+  const nbDocs = [...db.communes.values()].reduce((n, c) => n + c.docs.length, 0);
+  return `<button class="ged-card" data-dept="${escape(db.code)}">
+    ${thumbMarkup(firstManifestOfDept(db), firstImageOfDept(db), "🗺️")}
+    <div class="ged-card-body">
+      <h3>${escape(db.nom)} <span class="ged-code">${escape(db.code)}</span></h3>
+      <p class="ged-meta">${nbCommunes} commune${nbCommunes > 1 ? "s" : ""} · ${nbDocs} document${
+    nbDocs > 1 ? "s" : ""
+  }</p>
+    </div>
+  </button>`;
+}
+
+/* --- Niveau 1 : cards communes d'un département --- */
+function openDept(code) {
+  const db = docsData.get(code);
+  if (!db) return;
+  setBreadcrumb([
+    { label: "Départements", onClick: renderDeptCards },
+    { label: `${db.nom} (${db.code})` },
+  ]);
+  const grid = docsGridEl();
+  const communes = [...db.communes.values()].sort((a, b) =>
+    a.nom.localeCompare(b.nom, "fr")
+  );
+  grid.innerHTML = communes.map(communeCard).join("");
+  hydrateGeoref(grid); // réutilise badge/bouton Allmaps
+  hydrateThumbs(grid);
+}
+
+function communeCard(c) {
+  const assemblage = c.docs.find((d) => d.type === "tableau_assemblage");
+  const sections = c.docs.filter((d) => d.type === "section");
+  const manifest =
+    assemblage?.iiif_manifest ||
+    c.docs.find((d) => d.iiif_manifest)?.iiif_manifest ||
+    null;
+  const imageUrl =
+    assemblage?.image_url || c.docs.find((d) => d.image_url)?.image_url || null;
+
+  let actions = "";
+  if (assemblage) {
+    actions += `<a class="ged-link" href="${escape(
+      assemblage.archive_url
+    )}" target="_blank" rel="noopener">Tableau d'assemblage ↗</a>`;
+    if (assemblage.iiif_manifest && assemblage.licence_overlay_ok)
+      actions += `<div class="georef" data-manifest="${escape(
+        assemblage.iiif_manifest
+      )}"><span class="georef-loading">Vérification du géoréférencement…</span></div>`;
+  } else {
+    actions += `<span class="ged-empty">Pas de tableau d'assemblage</span>`;
+  }
+  if (sections.length) {
+    const chips = sections
+      .map((s) => {
+        const label =
+          (s.section_lettre ? `Sect. ${s.section_lettre}` : s.cote || "Section") +
+          (s.feuille_num ? ` f.${s.feuille_num}` : "");
+        return `<a class="ged-chip" href="${escape(
+          s.archive_url
+        )}" target="_blank" rel="noopener">${escape(label)} ↗</a>`;
+      })
+      .join("");
+    actions += `<div class="ged-sections">${chips}</div>`;
+  }
+
+  return `<div class="ged-card commune" id="ged-${escape(c.insee)}">
+    ${thumbMarkup(manifest, imageUrl, "📄")}
+    <div class="ged-card-body">
+      <h3>${escape(c.nom)} <span class="ged-code">${escape(c.insee)}</span></h3>
+      ${actions}
+    </div>
+  </div>`;
+}
+
+/* ------------------------------------------------------------------ *
+ * Vignettes IIIF — dérivées du manifeste (parser tolérant v2/v3).
+ * Rendu en 2 temps : placeholder à l'affichage, image injectée quand
+ * elle est résolue puis chargée (pas de flash d'image cassée). Cache.
+ * ------------------------------------------------------------------ */
+function thumbMarkup(manifest, imageUrl, emoji) {
+  if (manifest)
+    return `<div class="ged-thumb" data-manifest="${escape(
+      manifest
+    )}"><span class="ged-thumb-ph">${emoji}</span></div>`;
+  if (imageUrl)
+    return `<div class="ged-thumb"><img loading="lazy" src="${escape(
+      imageUrl
+    )}" alt=""></div>`;
+  return `<div class="ged-thumb"><span class="ged-thumb-ph">${emoji}</span></div>`;
+}
+
+const thumbCache = new Map(); // manifeste → URL de vignette (ou null)
+async function iiifThumbnail(manifestUrl) {
+  if (thumbCache.has(manifestUrl)) return thumbCache.get(manifestUrl);
+  let result = null;
+  try {
+    const res = await fetch(manifestUrl);
+    if (res.ok) result = thumbFromManifest(await res.json());
+  } catch (e) {
+    /* réseau / CORS → on garde le placeholder */
+  }
+  thumbCache.set(manifestUrl, result);
+  return result;
+}
+
+const asArray = (x) => (Array.isArray(x) ? x : x ? [x] : []);
+const stripInfo = (id) =>
+  String(id).replace(/\/info\.json$/, "").replace(/\/$/, "");
+
+function thumbFromManifest(m) {
+  const SIZE = "200,";
+  // 1) thumbnail explicite (v2 string/{@id}, v3 [{id}])
+  const t = m.thumbnail;
+  if (typeof t === "string") return t;
+  if (t && t["@id"]) return t["@id"];
+  if (Array.isArray(t) && (t[0]?.id || t[0]?.["@id"])) return t[0].id || t[0]["@id"];
+
+  // 2) service image du 1er canvas — Presentation v3
+  const canvasV3 = m.items?.[0];
+  const bodyV3 = canvasV3?.items?.[0]?.items?.[0]?.body;
+  const svcV3 = asArray(bodyV3?.service)[0];
+  const svcIdV3 = svcV3?.id || svcV3?.["@id"];
+  if (svcIdV3) return `${stripInfo(svcIdV3)}/full/${SIZE}/0/default.jpg`;
+  if (canvasV3?.thumbnail?.[0]?.id) return canvasV3.thumbnail[0].id;
+
+  // 3) service image du 1er canvas — Presentation v2
+  const canvasV2 = m.sequences?.[0]?.canvases?.[0];
+  const resV2 = canvasV2?.images?.[0]?.resource;
+  const svcV2 = asArray(resV2?.service)[0];
+  const svcIdV2 = svcV2?.["@id"] || svcV2?.id;
+  if (svcIdV2) return `${stripInfo(svcIdV2)}/full/${SIZE}/0/default.jpg`;
+  if (typeof canvasV2?.thumbnail === "string") return canvasV2.thumbnail;
+  if (canvasV2?.thumbnail?.["@id"]) return canvasV2.thumbnail["@id"];
+  if (resV2?.["@id"]) return resV2["@id"];
+
+  return null;
+}
+
+async function hydrateThumbs(root) {
+  await Promise.all(
+    [...root.querySelectorAll(".ged-thumb[data-manifest]")].map(async (el) => {
+      const url = await iiifThumbnail(el.dataset.manifest);
+      if (!el.isConnected || !url) return;
+      const img = new Image();
+      img.loading = "lazy";
+      img.alt = "";
+      img.onload = () => {
+        if (el.isConnected) el.replaceChildren(img);
+      };
+      img.src = url; // si erreur de chargement → le placeholder reste
+    })
+  );
+}
+
+/* --- Recherche / autocomplétion (≥ 3 caractères) --- */
+let docsSearchTimer = null;
+(function initDocsSearch() {
+  const input = document.getElementById("docs-search-input");
+  if (!input) return;
+  input.addEventListener("input", () => {
+    clearTimeout(docsSearchTimer);
+    const q = input.value.trim().toLowerCase();
+    if (q.length < 3) return hideDocsResults();
+    docsSearchTimer = setTimeout(() => runDocsSearch(q), 150);
+  });
+  document.addEventListener("click", (e) => {
+    if (!e.target.closest(".docs-search")) hideDocsResults();
+  });
+})();
+
+function runDocsSearch(q) {
+  const hits = docsSearchList.filter((x) => x.hay.includes(q)).slice(0, 8);
+  const el = document.getElementById("docs-search-results");
+  if (!hits.length) {
+    el.innerHTML = `<li class="no-hit">Aucun résultat</li>`;
+    el.hidden = false;
+    return;
+  }
+  el.innerHTML = hits
+    .map(
+      (h) =>
+        `<li data-dept="${escape(h.dept)}" data-insee="${escape(
+          h.insee
+        )}">${escape(h.nom)} <span class="dep">(${escape(h.deptNom)} ${escape(
+          h.dept
+        )})</span></li>`
+    )
+    .join("");
+  el.hidden = false;
+  el.querySelectorAll("li[data-insee]").forEach((li) =>
+    li.addEventListener("click", () => {
+      hideDocsResults();
+      document.getElementById("docs-search-input").value = "";
+      openDept(li.dataset.dept);
+      const card = document.getElementById(`ged-${li.dataset.insee}`);
+      if (card) {
+        card.scrollIntoView({ behavior: "smooth", block: "center" });
+        card.classList.add("ged-highlight");
+        setTimeout(() => card.classList.remove("ged-highlight"), 1600);
+      }
+    })
+  );
+}
+
+function hideDocsResults() {
+  const el = document.getElementById("docs-search-results");
+  if (el) {
+    el.hidden = true;
+    el.innerHTML = "";
+  }
+}

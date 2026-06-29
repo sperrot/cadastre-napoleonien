@@ -16,8 +16,14 @@
 </head>
 <body>
   <header>
-    <h1>Cadastre napoléonien</h1>
-    <p class="tagline">Annuaire cartographique des plans d'archives départementales — <strong>V0</strong></p>
+    <div class="header-titles">
+      <h1>Cadastre napoléonien</h1>
+      <p class="tagline">Annuaire cartographique des plans d'archives départementales — <strong>V0</strong></p>
+    </div>
+    <nav id="view-toggle" aria-label="Basculer la vue">
+      <button data-view="map" class="active">Carte</button>
+      <button data-view="docs">Documents</button>
+    </nav>
   </header>
 
   <div id="layout">
@@ -41,6 +47,18 @@
 
     <main id="map"></main>
   </div>
+
+  <!-- Onglet GED : recherche + cards Départements → Communes -->
+  <section id="docs-view" hidden>
+    <div class="docs-search">
+      <input id="docs-search-input" type="search"
+             placeholder="Rechercher une commune, un document… (3 caractères min.)"
+             autocomplete="off" />
+      <ul id="docs-search-results" hidden></ul>
+    </div>
+    <nav id="docs-breadcrumb" aria-label="fil d'Ariane"></nav>
+    <div id="docs-grid" class="cards-grid"></div>
+  </section>
 
   <!-- Copier config.example.js → config.js et renseigner Supabase -->
   <script src="config.js"></script>
