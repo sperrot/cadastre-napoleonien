@@ -518,14 +518,25 @@ let docsSearchList = []; // index plat pour l'autocomplétion
 
 async function loadDocsData() {
   if (docsData || !sb) return docsData;
-  const { data, error } = await sb
-    .from("document")
-    .select(
-      "insee,type,section_lettre,feuille_num,annee,cote,archive_url,iiif_manifest,image_url,licence_overlay_ok"
-    );
-  if (error) {
-    console.error("Supabase (docs):", error.message);
-    return null;
+  // Supabase/PostgREST plafonne à 1000 lignes/requête → on pagine pour tout
+  // récupérer (l'ordre stable sur insee est indispensable à la pagination).
+  const PAGE = 1000;
+  const data = [];
+  for (let from = 0; ; from += PAGE) {
+    const { data: page, error } = await sb
+      .from("document")
+      .select(
+        "insee,type,section_lettre,feuille_num,annee,cote,archive_url,iiif_manifest,image_url,licence_overlay_ok"
+      )
+      .order("insee")
+      .range(from, from + PAGE - 1);
+    if (error) {
+      console.error("Supabase (docs):", error.message);
+      if (!data.length) return null;
+      break;
+    }
+    data.push(...page);
+    if (page.length < PAGE) break; // dernière page atteinte
   }
   const byDept = new Map();
   for (const d of data) {
@@ -593,6 +604,22 @@ async function openDocs() {
     await loadDocsData();
   }
   if (docsData) renderDeptCards();
+}
+
+/* --- Bouton rafraîchir --- */
+document.getElementById("docs-refresh-btn")?.addEventListener("click", async () => {
+  docsData = null;
+  await openDocs();
+});
+
+/* --- Realtime : refresh automatique à chaque INSERT dans document --- */
+if (sb) {
+  sb.channel("document-inserts")
+    .on("postgres_changes", { event: "INSERT", schema: "public", table: "document" }, () => {
+      docsData = null;
+      if (!document.getElementById("docs-view").hidden) openDocs();
+    })
+    .subscribe();
 }
 
 /* --- Fil d'Ariane --- */
