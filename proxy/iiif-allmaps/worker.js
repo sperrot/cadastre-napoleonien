@@ -4,6 +4,11 @@
  * Routes :
  *   /manifest?u=<URL>
  *       → manifeste IIIF avec services image réécrits vers le proxy (CORS + @id fix)
+ *   /static-manifest?u=<URL.jpg>
+ *       → manifeste IIIF Presentation v2 généré à la volée depuis un JPEG nu
+ *         (pas de serveur IIIF côté source). Le service image du canvas pointe
+ *         vers /static-iiif/ (level 0). Réutilisable pour tout JPEG open data :
+ *         Saône-et-Loire, Bretagne, Doubs, etc. C'est LE chemin JPEG → IIIF.
  *   /iiif/<ENC>/info.json | /iiif/<ENC>/<tuile>
  *       → serveur IIIF réel proxifié (fix @id interne → URI publique)
  *   /static-iiif/<ENC>/info.json | /static-iiif/<ENC>/...
@@ -18,6 +23,8 @@ const ALLOWED = new Set([
   "archives.valdoise.fr",
   "archives.cotedor.fr",                       // AD21 — static JPEG via /static-iiif/
   "kartenn.region-bretagne.fr",                // Bretagne — assemblage communal JPG
+  "saone-et-loire71.fr",                       // Saône-et-Loire (71) — opendata JPEG (http)
+  "download.doubs.fr",                         // Doubs (25) — opendata JPEG
 ]);
 
 const BROWSER_HEADERS = {
@@ -76,13 +83,17 @@ function rewriteServices(node, map) {
 }
 
 /**
- * Lit les premiers 4 Ko d'un JPEG et extrait width/height via les marqueurs SOF.
+ * Lit les premiers 64 Ko d'un JPEG et extrait width/height via les marqueurs SOF.
  * Renvoie { w, h } ou les valeurs par défaut si la lecture échoue.
+ *
+ * 64 Ko (et non 4) : les scans d'archives (ex. Saône-et-Loire) placent un gros
+ * segment EXIF/ICC avant le SOF, qui tombe alors vers l'octet ~9900. 4 Ko
+ * ratait ces images → fallback erroné → géoréf Allmaps décalée.
  */
 async function fetchJpegDimensions(url) {
   try {
     const r = await fetch(url, {
-      headers: { ...BROWSER_HEADERS, "Range": "bytes=0-4095" },
+      headers: { ...BROWSER_HEADERS, "Range": "bytes=0-65535" },
     });
     const buf = await r.arrayBuffer();
     const v   = new DataView(buf);
@@ -107,6 +118,57 @@ async function fetchJpegDimensions(url) {
   return { w: 8000, h: 6000 }; // fallback
 }
 
+/**
+ * Construit un manifeste IIIF Presentation v2 depuis une URL de JPEG nu.
+ * Le service image du canvas pointe vers /static-iiif/ (level 0) : c'est lui
+ * qu'Allmaps (et le parser de vignette de l'app) utilisent réellement.
+ *   jpgUrl  : URL complète du JPEG source (http ou https), finit par .jpg
+ *   origin  : origine du worker (https) — sert de préfixe aux URLs proxifiées
+ *   w, h    : dimensions lues dans le JPEG
+ */
+function buildStaticManifest(jpgUrl, origin, w, h) {
+  const base = jpgUrl.replace(/\.jpe?g$/i, "");           // sans extension
+  const enc  = encodeURIComponent(base);
+  const serviceId  = `${origin}/static-iiif/${enc}`;
+  const manifestId = `${origin}/static-manifest?u=${encodeURIComponent(jpgUrl)}`;
+  const canvasId   = `${manifestId}/canvas/1`;
+  const label      = decodeURIComponent(jpgUrl.split("/").pop() || "plan");
+
+  return {
+    "@context": "http://iiif.io/api/presentation/2/context.json",
+    "@id":   manifestId,
+    "@type": "sc:Manifest",
+    "label": label,
+    "sequences": [{
+      "@type": "sc:Sequence",
+      "canvases": [{
+        "@id":    canvasId,
+        "@type":  "sc:Canvas",
+        "label":  label,
+        "width":  w,
+        "height": h,
+        "images": [{
+          "@type": "oa:Annotation",
+          "motivation": "sc:painting",
+          "resource": {
+            "@id":   jpgUrl,
+            "@type": "dctypes:Image",
+            "format": "image/jpeg",
+            "width":  w,
+            "height": h,
+            "service": {
+              "@context": "http://iiif.io/api/image/2/context.json",
+              "@id":     serviceId,
+              "profile": "http://iiif.io/api/image/2/level0.json",
+            },
+          },
+          "on": canvasId,
+        }],
+      }],
+    }],
+  };
+}
+
 export default {
   async fetch(request) {
     if (request.method === "OPTIONS")
@@ -125,6 +187,14 @@ export default {
       const manifest = await r.json();
       rewriteServices(manifest, (base) => `${origin}/iiif/${encodeURIComponent(base)}`);
       return json(manifest);
+    }
+
+    // ── 1bis) /static-manifest?u=<URL.jpg> — JPEG nu → manifeste Presentation ─
+    if (url.pathname === "/static-manifest") {
+      const src = url.searchParams.get("u");
+      if (!src || !hostAllowed(src)) return bad(400, "param ?u manquant ou hôte non autorisé");
+      const { w, h } = await fetchJpegDimensions(src);
+      return json(buildStaticManifest(src, origin, w, h));
     }
 
     // ── 2/3) /iiif/<ENC>/... — serveur IIIF réel proxifié ─────────────────
@@ -152,39 +222,44 @@ export default {
 
     // ── 4/5) /static-iiif/<ENC>/... — AD21 Archinoë via genereImage + cache ─
     // ENC = percent-encoded chemin data-original : /mnt/lustre/ad21/num_ext/...jpg
-    // Le Worker appelle genereImage.html (sans session requis) pour obtenir les
-    // vraies dimensions, puis sert l'image depuis /cache/ avec CORS.
+    // Le Worker demande à genereImage.html (sans session) un rendu à TARGET_PX px de côté,
+    // puis sert le JPEG depuis /cache/ avec CORS. Le nom du fichier cache encode la taille
+    // DEMANDÉE (_{TARGET}_{TARGET}_0_0_0_0_img.jpg) → URL déterministe, dérivable sans I/O.
     if (url.pathname.startsWith("/static-iiif/")) {
+      const TARGET_PX = 4000; // résolution servie (max natif ~8015 ; 4000 ≈ 560 Ko, net pour la géoréf)
+
       const rest    = url.pathname.slice("/static-iiif/".length);
       const i       = rest.indexOf("/");
       const enc     = i < 0 ? rest : rest.slice(0, i);
       const suffix  = i < 0 ? "" : rest.slice(i);
       const dataOrig = decodeURIComponent(enc); // /mnt/lustre/ad21/num_ext/.../xxx.jpg
 
-      // Dérive l'URL cache : strip leading /, remplace / par _, _1080_1080_0_0_0_0_img.jpg
-      const cachePath = dataOrig.slice(1).replace(/\//g, "_").replace(/\.jpg$/i, "_1080_1080_0_0_0_0_img.jpg");
-      const cacheUrl  = `https://archives.cotedor.fr/cache/${cachePath}`;
+      // URL cache déterministe (même logique que seed_cotedor_iiif.py)
+      const suffixName = `_${TARGET_PX}_${TARGET_PX}_0_0_0_0_img.jpg`;
+      const cachePath  = dataOrig.slice(1).replace(/\//g, "_").replace(/\.jpg$/i, suffixName);
+      const cacheUrl   = `https://archives.cotedor.fr/cache/${cachePath}`;
       if (!hostAllowed(cacheUrl)) return bad(400, "hôte non autorisé");
 
       const proxyBase = `${origin}/static-iiif/${enc}`;
-
-      // 4) info.json — appelle genereImage (sans session) pour les vraies dimensions
-      if (suffix === "/info.json" || suffix === "") {
-        const genParams = new URLSearchParams({
-          l: 1080, h: 1080, r: 0, n: 0, b: 0, c: 0,
+      const genUrl = () => {
+        const p = new URLSearchParams({
+          l: TARGET_PX, h: TARGET_PX, r: 0, n: 0, b: 0, c: 0,
           o: "IMG", id: "visu_image_1", image: dataOrig,
         });
-        let w = 8000, h = 6000;
+        return `https://archives.cotedor.fr/v2/images/genereImage.html?${p}`;
+      };
+
+      // 4) info.json — genereImage renvoie les dims de sortie (parts[2]/parts[3]).
+      // scaleFactors:[1] + tile_width=w → Allmaps demande UNE tuile = image complète.
+      if (suffix === "/info.json" || suffix === "") {
+        let w = TARGET_PX, h = Math.round(TARGET_PX * 0.7);
         try {
-          const gr = await fetch(
-            `https://archives.cotedor.fr/v2/images/genereImage.html?${genParams}`,
-            { headers: BROWSER_HEADERS }
-          );
+          const gr = await fetch(genUrl(), { headers: BROWSER_HEADERS });
           if (gr.ok) {
             const parts = (await gr.text()).split("\t");
-            if (parts.length >= 6) {
-              const pw = parseInt(parts[4]);
-              const ph = parseInt(parts[5]);
+            if (parts.length >= 4) {
+              const pw = parseInt(parts[2]); // largeur de sortie
+              const ph = parseInt(parts[3]); // hauteur de sortie
               if (pw > 0 && ph > 0) { w = pw; h = ph; }
             }
           }
@@ -199,22 +274,15 @@ export default {
             "http://iiif.io/api/image/2/level2.json",
             { "supports": ["regionByPx", "sizeByWh"] },
           ],
-          "tiles": [{ "width": 512, "scaleFactors": [1, 2, 4, 8] }],
+          "tiles": [{ "width": w, "scaleFactors": [1] }],
         });
       }
 
-      // 5) toute requête d'image (tile ou full) → sert depuis /cache/ avec CORS
+      // 5) toute requête d'image → sert depuis /cache/ avec CORS
       let r = await fetch(cacheUrl, { headers: BROWSER_HEADERS });
       if (!r.ok) {
         // Cache pas encore générée : déclenche genereImage puis réessaie
-        const genParams = new URLSearchParams({
-          l: 1080, h: 1080, r: 0, n: 0, b: 0, c: 0,
-          o: "IMG", id: "visu_image_1", image: dataOrig,
-        });
-        await fetch(
-          `https://archives.cotedor.fr/v2/images/genereImage.html?${genParams}`,
-          { headers: BROWSER_HEADERS }
-        );
+        await fetch(genUrl(), { headers: BROWSER_HEADERS });
         r = await fetch(cacheUrl, { headers: BROWSER_HEADERS });
       }
       if (!r.ok) return bad(502, "image cache: " + r.status);
@@ -224,6 +292,6 @@ export default {
       return new Response(r.body, { status: 200, headers });
     }
 
-    return bad(404, "routes: /manifest?u=… | /iiif/<enc>/… | /static-iiif/<enc>/…");
+    return bad(404, "routes: /manifest?u=… | /static-manifest?u=… | /iiif/<enc>/… | /static-iiif/<enc>/…");
   },
 };

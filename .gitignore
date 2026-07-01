@@ -9,3 +9,16 @@ __pycache__/
 # Divers
 .DS_Store
 Thumbs.db
+
+# Cache disque du harvester
+harvest/.cache/
+
+# Données sources brutes (téléchargées, volumineuses, à régénérer)
+download/
+
+# Config/session locale de l'agent
+.claude/
+
+# Cache de build Cloudflare Workers
+.wrangler/
+proxy/**/.wrangler/

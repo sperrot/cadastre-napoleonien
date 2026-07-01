@@ -25,6 +25,7 @@ Usage :
 """
 
 import sys
+import os
 import time
 import re
 import argparse
@@ -43,8 +44,14 @@ HEADERS = {
                    "(KHTML, like Gecko) Chrome/124.0 Safari/537.36"),
     "Accept": "application/rdf+xml, application/xml, text/xml, */*",
 }
-SLEEP = 0.7          # politesse : ~1 req/s
+SLEEP = 0.4          # politesse entre requêtes réseau (cache disque = 0 sleep)
 GEO_API = "https://geo.api.gouv.fr/communes"
+
+# Cache disque des RDF : un re-run (ou une reprise après plantage) réutilise les
+# nœuds déjà récupérés → quasi instantané. Les échecs ne sont PAS cachés : ils
+# seront réessayés au prochain run (récupère les communes sautées). --no-cache désactive.
+CACHE_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), ".cache")
+USE_CACHE = True
 
 # Période retenue (cadastre napoléonien). Surchargée par les arguments CLI.
 YEAR_MIN, YEAR_MAX = 1790, 1860
@@ -80,6 +87,17 @@ def fetch_graph(etype: str, eid: str) -> Graph:
     key = (etype, eid)
     if key in _rdf_cache:
         return _rdf_cache[key]
+    # 1. Cache disque (lecture) : 0 réseau, 0 sleep
+    cache_path = os.path.join(CACHE_DIR, f"{etype}_{eid}.xml")
+    if USE_CACHE and os.path.exists(cache_path):
+        with open(cache_path, "rb") as fh:
+            content = fh.read()
+        if b"rdf:RDF" in content[:4000]:
+            g = Graph()
+            g.parse(data=content, format="xml")
+            _rdf_cache[key] = g
+            return g
+    # 2. Réseau (plusieurs motifs d'URL d'export)
     candidates = [
         f"{BASE}/{etype}/{eid}.rdf",
         f"{BASE}/{etype}/{eid}/rdf.xml",
@@ -96,6 +114,10 @@ def fetch_graph(etype: str, eid: str) -> Graph:
                 g = Graph()
                 g.parse(data=r.content, format="xml")
                 _rdf_cache[key] = g
+                if USE_CACHE:                 # n'écrit QUE les succès
+                    os.makedirs(CACHE_DIR, exist_ok=True)
+                    with open(cache_path, "wb") as fh:
+                        fh.write(r.content)
                 time.sleep(SLEEP)
                 return g
         time.sleep(3 * (attempt + 1))         # backoff croissant (3,6,9,12s)
@@ -212,12 +234,13 @@ def extract_leaf(g: Graph, subj: URIRef, manifest: str, commune_hint: str = None
                     commune_name = loc
                 break
 
-    # image (dao) : source d'une instantiation, hors vignette
+    # image (dao) : source d'une instantiation, hors vignette.
+    # Motifs rencontrés : daoloc (SSD), daogrp (Val-d'Oise) → on accepte les deux.
     image = None
     for inst in g.objects(subj, RICO.hasInstantiation):
         for src in g.objects(inst, DCTERMS.source):
             u = str(src)
-            if "daoloc" in u and "vignette" not in u:
+            if ("daoloc" in u or "daogrp" in u) and "vignette" not in u:
                 image = re.sub(r"//+", "/", u).replace("https:/", "https://")
 
     licence, overlay_ok = resolve_licence(service, manifest)
@@ -328,9 +351,26 @@ def insee_of(commune_name: str):
     return code
 
 
+# Licence par service (institution) — table manuelle qui FAIT FOI quand le
+# manifeste ne porte pas de licence machine-lisible (cf. to_do/licences_par_service.md).
+# id service -> (libellé, overlay_ok). À enrichir au fil des départements validés.
+SERVICE_LICENCE = {
+    "34471": ("Réutilisation OK (CGU AD95)", True),   # Val-d'Oise
+    "33495": ("Réutilisation OK (CGU AD14)", True),   # Calvados
+    "34393": ("Licence Ouverte", True),               # Seine-Saint-Denis
+    "34309": ("Licence Ouverte", True),               # Vosges (déclarée dans le manifeste)
+    "33359": ("Réutilisation OK (CGU AD01)", True),   # Ain (manifeste sans champ license, overlay confirmé)
+}
+
+
 def resolve_licence(service: str, manifest: str):
-    """Lit le manifeste IIIF (accessible) pour déterminer la licence."""
+    """Licence par institution. La table manuelle SERVICE_LICENCE fait foi
+    (manifestes souvent sans champ `license`) ; sinon, détection dans le manifeste."""
     if service in _licence_cache:
+        return _licence_cache[service]
+    sid = eid_of(service) if service else None
+    if sid in SERVICE_LICENCE:                 # surcharge manuelle (prioritaire)
+        _licence_cache[service] = SERVICE_LICENCE[sid]
         return _licence_cache[service]
     licence, overlay_ok = None, False
     try:
@@ -384,7 +424,7 @@ def emit_sql(leaves, out=None):
 
 
 def main():
-    global YEAR_MIN, YEAR_MAX
+    global YEAR_MIN, YEAR_MAX, USE_CACHE
     ap = argparse.ArgumentParser(description="Harvester FranceArchives → SQL Supabase")
     ap.add_argument("eid", help="identifiant de l'instrument de recherche (ou facomponent)")
     ap.add_argument("etype", nargs="?", default="findingaid",
@@ -392,8 +432,12 @@ def main():
     ap.add_argument("--year-min", type=int, default=YEAR_MIN)
     ap.add_argument("--year-max", type=int, default=YEAR_MAX)
     ap.add_argument("--out", help="fichier SQL de sortie (UTF-8). Défaut : stdout.")
+    ap.add_argument("--no-cache", action="store_true",
+                    help="ignore le cache disque .cache/ (re-télécharge tout)")
     args = ap.parse_args()
     YEAR_MIN, YEAR_MAX = args.year_min, args.year_max
+    if args.no_cache:
+        USE_CACHE = False
 
     leaves, seen = [], set()
     sys.stderr.write(f"Descente de {args.etype}/{args.eid} "

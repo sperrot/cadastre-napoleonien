@@ -29,7 +29,7 @@
               "@type": "oa:Annotation",
               "motivation": "sc:painting",
               "resource": {
-                "@id": "https://archives.cotedor.fr/cache/mnt_lustre_ad21_num_ext_frad021_3p_frad021_3p_plan_341_frad021_3p_plan_341_008_1080_1080_0_0_0_0_img.jpg",
+                "@id": "https://archives.cotedor.fr/cache/mnt_lustre_ad21_num_ext_frad021_3p_frad021_3p_plan_341_frad021_3p_plan_341_008_4000_4000_0_0_0_0_img.jpg",
                 "@type": "dctypes:Image",
                 "format": "image/jpeg",
                 "width": 8000,

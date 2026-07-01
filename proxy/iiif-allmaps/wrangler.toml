@@ -1,0 +1,10 @@
+name = "iiif-allmaps"
+main = "worker.js"
+compatibility_date = "2024-11-01"
+
+# Déploiement :
+#   npm i -g wrangler
+#   wrangler login
+#   wrangler deploy
+#
+# Donne une URL du type https://iiif-allmaps.<compte>.workers.dev

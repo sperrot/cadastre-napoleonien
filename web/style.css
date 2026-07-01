@@ -219,6 +219,34 @@ header .tagline { margin: 2px 0 0; font-size: .8rem; color: var(--muted); }
   padding: 24px 20px 48px;
 }
 
+/* Barre toolbar : recherche + bouton refresh */
+.docs-toolbar {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  max-width: 600px;
+  margin: 0 auto 22px;
+}
+.docs-toolbar .docs-search {
+  flex: 1 1 auto;
+  max-width: none;
+  margin: 0;
+}
+#docs-refresh-btn {
+  flex: 0 0 auto;
+  padding: 10px 14px;
+  font-size: 1.1rem;
+  line-height: 1;
+  border: 1px solid #d1d5db;
+  border-radius: 10px;
+  background: #fff;
+  cursor: pointer;
+  color: var(--accent);
+  transition: background .15s, transform .3s;
+}
+#docs-refresh-btn:hover { background: var(--accent-soft); }
+#docs-refresh-btn:active { transform: rotate(180deg); }
+
 /* Recherche centrée */
 .docs-search {
   position: relative;

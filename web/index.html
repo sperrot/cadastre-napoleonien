@@ -50,11 +50,14 @@
 
   <!-- Onglet GED : recherche + cards Départements → Communes -->
   <section id="docs-view" hidden>
-    <div class="docs-search">
-      <input id="docs-search-input" type="search"
-             placeholder="Rechercher une commune, un document… (3 caractères min.)"
-             autocomplete="off" />
-      <ul id="docs-search-results" hidden></ul>
+    <div class="docs-toolbar">
+      <div class="docs-search">
+        <input id="docs-search-input" type="search"
+               placeholder="Rechercher une commune, un document… (3 caractères min.)"
+               autocomplete="off" />
+        <ul id="docs-search-results" hidden></ul>
+      </div>
+      <button id="docs-refresh-btn" title="Rafraîchir les documents">↺</button>
     </div>
     <nav id="docs-breadcrumb" aria-label="fil d'Ariane"></nav>
     <div id="docs-grid" class="cards-grid"></div>

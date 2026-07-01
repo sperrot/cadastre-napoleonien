@@ -62,6 +62,14 @@ const DEPT_STATUS = {
   "93": "georef_ready", // Seine-Saint-Denis
   "01": "georef_ready", // Ain
   "31": "georef_ready", // Haute-Garonne
+  "21": "georef_ready", // Côte-d'Or
+  "25": "georef_ready", // Doubs
+  "71": "georef_ready", // Saône-et-Loire
+  // Bretagne — JPEG → IIIF via worker (georéf solvable) → vert
+  "22": "georef",       // Côtes-d'Armor
+  "29": "georef",       // Finistère
+  "35": "georef",       // Ille-et-Vilaine
+  "56": "georef",       // Morbihan
 };
 const DEPT_NEUTRAL = "#b8b2a8"; // stroke des départements sans statut
 

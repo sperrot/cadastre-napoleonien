@@ -31,7 +31,10 @@ qu'**au 1er run local** du harvester sur un échantillon de feuilles.
 
 | Département | Lien XML arbre | Licence | IIIF dispo | Harvester | INSEE à réconcilier |
 |---|---|---|---|---|---|
-| **Val-d'Oise (95)** — FRAD095 | [findingaid « Plans du cadastre napoléonien (1812-1852) » `5570bf08…`](https://francearchives.gouv.fr/findingaid/5570bf08e62dc0163111f6d39f6c2ca96ee67bbc) (racine = branche plans, 187 communes) | ✅ OK (manuelle, svc 34471) | ✅ OK (manifeste valdoise.fr) | scout recon-only (voir ci-dessous) | ⚠️ 5 cas (~19 feuilles) → [détail](INSEE_a_reconcilier.md#val-doise-95--insee-non-résolu-19-feuilles-5-cas) |
+| **Val-d'Oise (95)** — FRAD095 | [findingaid « Plans du cadastre napoléonien (1812-1852) » `5570bf08…`](https://francearchives.gouv.fr/findingaid/5570bf08e62dc0163111f6d39f6c2ca96ee67bbc) (racine = branche plans, 187 communes) | ✅ OK (manuelle, svc 34471) | ✅ OK (manifeste valdoise.fr) | ✅ **moissonné** : 1477 feuilles → `harvest/seed_val-doise.sql` (2026-06-29) | ⚠️ 15 feuilles / 5 libellés → [détail](INSEE_a_reconcilier.md#val-doise-95--insee-non-résolu) |
+| **Doubs (25)** — FRAD025 | _findingaid id à renseigner_ (branche « Atlas parcellaire ») | ✅ à confirmer | ✅ OK (IIIF via FranceArchives) | ✅ **moissonné** : 633 feuilles « Atlas parcellaire » → `harvest/seed_doubs.sql` (2026-06-29) | ⚠️ ~88 feuilles (communes anciennes/fusionnées + 1 orphelin Besançon) — **reporté** → [détail](INSEE_a_reconcilier.md#doubs-25--insee-non-résolu) |
+| **Ain (01)** — FRAD001 | [findingaid « Répertoire méthodique du Cadastre napoléonien » `eefe9797…`](https://francearchives.gouv.fr/findingaid/eefe9797a37dd7e91a65765a7fa44eb3141bec46) (cadastre **complet**, 463 communes) | ✅ OK (manuelle, svc 33359) | ✅ OK (archives.ain.fr, direct Allmaps) | 🟡 **en cours** — scout **plans seuls** (« Plans parcellaires ») → `seed_ain.sql` | — (post-run) |
+| **Vosges (88)** — FRAD088 | _findingaid id à renseigner_ | ✅ **Licence Ouverte 2.0** (manifeste) | ✅ OK (manifeste vosges.fr) | ✅ **ingéré** : 6410 collectées → **5691 docs / 453 communes / 460 assemblages / 100 % overlay_ok** (`seed_vosges.sql`, 2026-06-29) | ⚠️ 719 feuilles sans INSEE (4 familles) — **complétion reportée** → [détail](INSEE_a_reconcilier.md#vosges-88--insee-non-résolu) |
 | **Seine-Saint-Denis (93)** — FRAD093 · *pilote* | [findingaid `2679af1…`](https://francearchives.gouv.fr/findingaid/2679af120dcec5557878b634c3701f842b1d806e) · sous-nœud [facomponent « Plans cadastraux » `8c9077ce…`](https://francearchives.gouv.fr/facomponent/8c9077ce3826a2676417514c55903ae704aff91b) | ✅ OK | ✅ OK | 🟡 **en cours** — `python harvest_francearchives.py 8c9077ce3826a2676417514c55903ae704aff91b facomponent` | ⚠️ 2 communes absentes → re-run (Aubervilliers 93001, Saint-Denis 93066) |
 | **Calvados (14)** — FRAD014 | A→D : [findingaid `d17231b4…`](https://francearchives.gouv.fr/findingaid/d17231b4a0689ac142534b2a6ee4fc0c190338a1)<br>E→Le Me : [findingaid `c89ef2c4…`](https://francearchives.gouv.fr/findingaid/c89ef2c4dfe0d59b57752e97961d4f0b9d067601) | ✅ OK (manuelle, svc 33495) | ❌ pas de IIIF (visionneuse ARK calvados.fr) | ⚠️ harvester à adapter (cf. note) — `…d17231b4…` + `…c89ef2c4…` | — (pas encore moissonné) |
 
@@ -62,6 +65,15 @@ Cases non résolues lors des moissons, à rejouer seules → [`INSEE_a_reconcili
    `location` de la feuille, au cas par cas.
 4. Cible : brancher un **référentiel des communes historiques** (COG INSEE) plutôt
    que le seul geo.api.
+
+### 🛰️ Géoréf Allmaps — conformité des serveurs IIIF
+Diagnostic par éditeur de serveur (CORS, préflight, manifeste) + proxy de secours :
+voir [`diagnostic_iiif_allmaps.md`](diagnostic_iiif_allmaps.md) et
+[`../proxy/iiif-allmaps/`](../proxy/iiif-allmaps/README.md).
+**Règle confirmée** : dans Allmaps, **coller l'URL `…/manifest` marche ; le lien
+ARK/visionneuse non.** Famille « FOND.TIF » (Ain, Vosges, Haute-Garonne ✅, Val-d'Oise
+à retester) → marche en direct, préflight/`@id` cassés inclus. **Proxy non requis à
+ce jour.** Doubs/Jura = manifeste caché derrière le viewer SPA ; Calvados = pas de IIIF.
 
 ### 🔧 Test live des feuilles (échantillons) — résultat
 Vérifié en réel sur 3 feuilles « Tableau d'assemblage » déposées :

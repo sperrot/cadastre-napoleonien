@@ -68,10 +68,13 @@ PLANS_POS = re.compile(
     re.I,
 )
 # À EXCLURE : documents textuels du cadastre (pas des plans) et cadastre moderne.
+# `\b[ée]tats?\b` couvre « État de section » ET « État de la section A »
+# (le « de la » cassait l'ancien motif et laissait passer ces registres).
 PLANS_NEG = re.compile(
-    r"matric|mutation|état\s+de\s+section|etat\s+de\s+section|registre|"
-    r"répertoire|repertoire|\btable\b|classement|arpentage|proc[èe]s|"
-    r"délimitation|delimitation|r[ée]nov|remembr",
+    r"matric|mutation|\b[ée]tats?\b|registre|répertoire|repertoire|\btable\b|"
+    r"classement|arpentage|proc[èe]s|délimitation|delimitation|"
+    r"limites?\s+de\s+commune|propri[ée]t|\bfolios?\b|sommier|"
+    r"r[ée]nov|remembr",
     re.I,
 )
 
@@ -176,6 +179,12 @@ def scout(etype: str, eid: str, limit: int = 0, max_depth: int = 8):
             return
         g, subj, title, children, manifest = res
 
+        # (0) Branche-registre explicite (État de section, Matrices, Propriétés…)
+        #     → élaguée : on n'y descend pas. (depth>0 : ne pas élaguer la racine,
+        #     dont le titre « Répertoire… » matcherait PLANS_NEG.)
+        if depth > 0 and title and PLANS_NEG.search(title):
+            return
+
         # (1) Nœud nommé « plans/cadastre » avec des enfants → branche isolée.
         if children and is_plans_title(title):
             record(etype, eid, title, commune=parent_title)
@@ -228,22 +237,44 @@ def emit_plan(service, targets, year_min, year_max):
 
 
 def run_harvester(targets, out_path, year_min, year_max):
-    """Moissonne chaque branche EN-PROCESS (réutilise H.walk/H.emit_sql) et
-    concatène le SQL dans out_path. Reste dans le même process → même session
-    HTTP que le scout (donc même réglage TLS/--insecure)."""
+    """Moissonne chaque branche EN-PROCESS (réutilise H.walk/H.emit_sql).
+
+    Écriture **incrémentale et reprenable** : chaque branche est écrite puis
+    flushée atomiquement (marqueur + SQL d'un bloc). Au redémarrage, les branches
+    déjà présentes dans le seed sont sautées → robuste aux coupures (sommeil
+    machine, etc.), contrairement à un écrit tout-ou-rien en fin de run."""
+    import io
     H.YEAR_MIN, H.YEAR_MAX = year_min, year_max
     out = Path(out_path)
-    with out.open("w", encoding="utf-8") as fh:
-        fh.write(f"-- seed cadastre — {len(targets)} branche(s) — "
-                 f"période {year_min}-{year_max}\n")
+
+    # Reprise : eids des branches déjà écrites (marqueur « (… <eid>) — »).
+    done = set()
+    if out.exists():
+        prev = out.read_text(encoding="utf-8", errors="ignore")
+        done = set(re.findall(r"-- ── .*? \(([0-9a-f]{40})\) —", prev))
+    resume = bool(done)
+    sys.stderr.write(f"{'Reprise' if resume else 'Démarrage'} : "
+                     f"{len(done)}/{len(targets)} branche(s) déjà écrite(s).\n")
+
+    with out.open("a" if resume else "w", encoding="utf-8") as fh:
+        if not resume:
+            fh.write(f"-- seed cadastre — {len(targets)} branche(s) — "
+                     f"période {year_min}-{year_max}\n")
         for i, t in enumerate(targets, 1):
+            if t["branch_eid"] in done:
+                continue
             sys.stderr.write(f"[{i}/{len(targets)}] harvest ← "
                              f"{t['commune']} ({t['branch_eid']}) …\n")
             leaves, seen = [], set()
             H.walk(t["branch_etype"], t["branch_eid"], leaves, seen)
-            fh.write(f"\n-- ── {t['commune']} / {t['branch_title']} "
-                     f"({t['branch_eid']}) — {len(leaves)} feuille(s) ──\n")
-            H.emit_sql(leaves, out=fh)
+            # bloc construit en mémoire puis écrit+flushé d'un coup (atomique) :
+            # une coupure mid-branche laisse la branche absente → refaite au run suivant.
+            buf = io.StringIO()
+            buf.write(f"\n-- ── {t['commune']} / {t['branch_title']} "
+                      f"({t['branch_eid']}) — {len(leaves)} feuille(s) ──\n")
+            H.emit_sql(leaves, out=buf)
+            fh.write(buf.getvalue())
+            fh.flush()
     sys.stderr.write(f"\nSeed écrit : {out}\n")
 
 
@@ -279,6 +310,14 @@ def main():
         urllib3.disable_warnings()
         H.session.verify = False        # session partagée scout + harvester
         sys.stderr.write("⚠ TLS non vérifié (--insecure).\n")
+    else:
+        # TLS propre via le magasin de certificats de l'OS (truststore).
+        try:
+            import truststore
+            truststore.inject_into_ssl()
+            sys.stderr.write("TLS via truststore (magasin OS).\n")
+        except Exception:
+            sys.stderr.write("truststore indispo (utilise --insecure si TLS KO).\n")
 
     service, targets = scout(args.etype, args.eid, limit=args.limit)
     if not targets:

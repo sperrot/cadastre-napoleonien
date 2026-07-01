@@ -30,6 +30,9 @@ PROXY_BASE   = "https://iiif-allmaps.sperrot.workers.dev"
 # Préfixe serveur ajouté à data_src pour reconstituer le data-original Archinoë
 MNTLUS_PREFIX = "/mnt/lustre/ad21"
 
+# Résolution servie (doit correspondre à TARGET_PX du Worker)
+TARGET_PX = 4000
+
 # Regex (réutilisés depuis harvest_cotedor.py)
 _RE_ITEM     = re.compile(r'<div id="item_(\d+)">')
 _RE_TITLE    = re.compile(r'class="titres">\s*<span[^>]*>([^<]*)</span>')
@@ -68,8 +71,9 @@ def make_manifest(item):
     image_id    = item["image_id"]
     # data-original Archinoë = /mnt/lustre/ad21 + data_src (e.g. /num_ext/.../xxx.jpg)
     data_orig   = MNTLUS_PREFIX + item["data_src"]
-    # URL cache dérivée déterministiquement (même logique que le Worker)
-    cache_file  = data_orig[1:].replace("/", "_").replace(".jpg", "_1080_1080_0_0_0_0_img.jpg")
+    # URL cache dérivée déterministiquement (même logique/taille que le Worker)
+    suffix_name = f"_{TARGET_PX}_{TARGET_PX}_0_0_0_0_img.jpg"
+    cache_file  = data_orig[1:].replace("/", "_").replace(".jpg", suffix_name)
     image_url   = f"{BASE_AD21}/cache/{cache_file}"
     # Encode le data-original path pour le Worker IIIF
     enc_orig    = urllib.parse.quote(data_orig, safe="")
