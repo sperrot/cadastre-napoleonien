@@ -1,0 +1,45 @@
+{
+  "@context": "http://iiif.io/api/presentation/2/context.json",
+  "@id": "https://sperrot.github.io/cadastre-napoleonien/manifests/ad21/791791953.json",
+  "@type": "sc:Manifest",
+  "label": "Section B — 3 P PLAN 439/3 (1809)",
+  "metadata": [
+    {
+      "label": "Cote",
+      "value": "3 P PLAN 439/3"
+    },
+    {
+      "label": "Date",
+      "value": "1809"
+    }
+  ],
+  "attribution": "Archives départementales de la Côte-d'Or",
+  "sequences": [
+    {
+      "@type": "sc:Sequence",
+      "canvases": [
+        {
+          "@id": "https://sperrot.github.io/cadastre-napoleonien/manifests/ad21/791791953.json/canvas/1",
+          "@type": "sc:Canvas",
+          "label": "Section B",
+          "width": 8000,
+          "height": 6000,
+          "images": [
+            {
+              "@type": "oa:Annotation",
+              "motivation": "sc:painting",
+              "resource": {
+                "@id": "https://archives.cotedor.fr/num_ext/frad021_3p/frad021_3p_plan_439/frad021_3p_plan_439_003.jpg",
+                "@type": "dctypes:Image",
+                "format": "image/jpeg",
+                "width": 8000,
+                "height": 6000
+              },
+              "on": "https://sperrot.github.io/cadastre-napoleonien/manifests/ad21/791791953.json/canvas/1"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

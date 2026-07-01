@@ -1,0 +1,45 @@
+{
+  "@context": "http://iiif.io/api/presentation/2/context.json",
+  "@id": "https://sperrot.github.io/cadastre-napoleonien/manifests/ad21/791670311.json",
+  "@type": "sc:Manifest",
+  "label": "Tableau d'assemblage — 3 P PLAN 65/1 (1834)",
+  "metadata": [
+    {
+      "label": "Cote",
+      "value": "3 P PLAN 65/1"
+    },
+    {
+      "label": "Date",
+      "value": "1834"
+    }
+  ],
+  "attribution": "Archives départementales de la Côte-d'Or",
+  "sequences": [
+    {
+      "@type": "sc:Sequence",
+      "canvases": [
+        {
+          "@id": "https://sperrot.github.io/cadastre-napoleonien/manifests/ad21/791670311.json/canvas/1",
+          "@type": "sc:Canvas",
+          "label": "Tableau d'assemblage",
+          "width": 8000,
+          "height": 6000,
+          "images": [
+            {
+              "@type": "oa:Annotation",
+              "motivation": "sc:painting",
+              "resource": {
+                "@id": "https://archives.cotedor.fr/num_ext/frad021_3p/frad021_3p_plan_065/frad021_3p_plan_065_001.jpg",
+                "@type": "dctypes:Image",
+                "format": "image/jpeg",
+                "width": 8000,
+                "height": 6000
+              },
+              "on": "https://sperrot.github.io/cadastre-napoleonien/manifests/ad21/791670311.json/canvas/1"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

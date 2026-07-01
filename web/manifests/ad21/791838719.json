@@ -1,0 +1,45 @@
+{
+  "@context": "http://iiif.io/api/presentation/2/context.json",
+  "@id": "https://sperrot.github.io/cadastre-napoleonien/manifests/ad21/791838719.json",
+  "@type": "sc:Manifest",
+  "label": "Tableau d'assemblage : Sections L-M — 3 P PLAN 584/15 (1820)",
+  "metadata": [
+    {
+      "label": "Cote",
+      "value": "3 P PLAN 584/15"
+    },
+    {
+      "label": "Date",
+      "value": "1820"
+    }
+  ],
+  "attribution": "Archives départementales de la Côte-d'Or",
+  "sequences": [
+    {
+      "@type": "sc:Sequence",
+      "canvases": [
+        {
+          "@id": "https://sperrot.github.io/cadastre-napoleonien/manifests/ad21/791838719.json/canvas/1",
+          "@type": "sc:Canvas",
+          "label": "Tableau d'assemblage : Sections L-M",
+          "width": 8000,
+          "height": 6000,
+          "images": [
+            {
+              "@type": "oa:Annotation",
+              "motivation": "sc:painting",
+              "resource": {
+                "@id": "https://archives.cotedor.fr/num_ext/frad021_3p/frad021_3p_plan_584/frad021_3p_plan_584_015.jpg",
+                "@type": "dctypes:Image",
+                "format": "image/jpeg",
+                "width": 8000,
+                "height": 6000
+              },
+              "on": "https://sperrot.github.io/cadastre-napoleonien/manifests/ad21/791838719.json/canvas/1"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

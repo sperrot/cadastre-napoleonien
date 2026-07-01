@@ -1,0 +1,45 @@
+{
+  "@context": "http://iiif.io/api/presentation/2/context.json",
+  "@id": "https://sperrot.github.io/cadastre-napoleonien/manifests/ad21/791756512.json",
+  "@type": "sc:Manifest",
+  "label": "Section K — 3 P PLAN 606/15 (1826)",
+  "metadata": [
+    {
+      "label": "Cote",
+      "value": "3 P PLAN 606/15"
+    },
+    {
+      "label": "Date",
+      "value": "1826"
+    }
+  ],
+  "attribution": "Archives départementales de la Côte-d'Or",
+  "sequences": [
+    {
+      "@type": "sc:Sequence",
+      "canvases": [
+        {
+          "@id": "https://sperrot.github.io/cadastre-napoleonien/manifests/ad21/791756512.json/canvas/1",
+          "@type": "sc:Canvas",
+          "label": "Section K",
+          "width": 8000,
+          "height": 6000,
+          "images": [
+            {
+              "@type": "oa:Annotation",
+              "motivation": "sc:painting",
+              "resource": {
+                "@id": "https://archives.cotedor.fr/num_ext/frad021_3p/frad021_3p_plan_606/frad021_3p_plan_606_015.jpg",
+                "@type": "dctypes:Image",
+                "format": "image/jpeg",
+                "width": 8000,
+                "height": 6000
+              },
+              "on": "https://sperrot.github.io/cadastre-napoleonien/manifests/ad21/791756512.json/canvas/1"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

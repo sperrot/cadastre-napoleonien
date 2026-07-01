@@ -1,0 +1,45 @@
+{
+  "@context": "http://iiif.io/api/presentation/2/context.json",
+  "@id": "https://sperrot.github.io/cadastre-napoleonien/manifests/ad21/791820874.json",
+  "@type": "sc:Manifest",
+  "label": "Section D6 — 3 P PLAN 532/28 (1843)",
+  "metadata": [
+    {
+      "label": "Cote",
+      "value": "3 P PLAN 532/28"
+    },
+    {
+      "label": "Date",
+      "value": "1843"
+    }
+  ],
+  "attribution": "Archives départementales de la Côte-d'Or",
+  "sequences": [
+    {
+      "@type": "sc:Sequence",
+      "canvases": [
+        {
+          "@id": "https://sperrot.github.io/cadastre-napoleonien/manifests/ad21/791820874.json/canvas/1",
+          "@type": "sc:Canvas",
+          "label": "Section D6",
+          "width": 8000,
+          "height": 6000,
+          "images": [
+            {
+              "@type": "oa:Annotation",
+              "motivation": "sc:painting",
+              "resource": {
+                "@id": "https://archives.cotedor.fr/num_ext/frad021_3p/frad021_3p_plan_532/frad021_3p_plan_532_028.jpg",
+                "@type": "dctypes:Image",
+                "format": "image/jpeg",
+                "width": 8000,
+                "height": 6000
+              },
+              "on": "https://sperrot.github.io/cadastre-napoleonien/manifests/ad21/791820874.json/canvas/1"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
