@@ -29,14 +29,14 @@
               "@type": "oa:Annotation",
               "motivation": "sc:painting",
               "resource": {
-                "@id": "https://archives.cotedor.fr/num_ext/frad021_3p/frad021_3p_plan_009/frad021_3p_plan_009_005.jpg",
+                "@id": "https://archives.cotedor.fr/cache/mnt_lustre_ad21_num_ext_frad021_3p_frad021_3p_plan_009_frad021_3p_plan_009_005_1080_1080_0_0_0_0_img.jpg",
                 "@type": "dctypes:Image",
                 "format": "image/jpeg",
                 "width": 8000,
                 "height": 6000,
                 "service": {
                   "@context": "http://iiif.io/api/image/2/context.json",
-                  "@id": "https://iiif-allmaps.sperrot.workers.dev/static-iiif/https%3A%2F%2Farchives.cotedor.fr%2Fnum_ext%2Ffrad021_3p%2Ffrad021_3p_plan_009%2Ffrad021_3p_plan_009_005",
+                  "@id": "https://iiif-allmaps.sperrot.workers.dev/static-iiif/%2Fmnt%2Flustre%2Fad21%2Fnum_ext%2Ffrad021_3p%2Ffrad021_3p_plan_009%2Ffrad021_3p_plan_009_005.jpg",
                   "profile": "http://iiif.io/api/image/2/level2.json"
                 }
               },

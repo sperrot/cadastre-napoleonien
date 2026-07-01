@@ -150,21 +150,45 @@ export default {
       return new Response(r.body, { status: r.status, headers: h });
     }
 
-    // ── 4/5) /static-iiif/<ENC>/... — JPEG statique émulé en IIIF level 0 ─
+    // ── 4/5) /static-iiif/<ENC>/... — AD21 Archinoë via genereImage + cache ─
+    // ENC = percent-encoded chemin data-original : /mnt/lustre/ad21/num_ext/...jpg
+    // Le Worker appelle genereImage.html (sans session requis) pour obtenir les
+    // vraies dimensions, puis sert l'image depuis /cache/ avec CORS.
     if (url.pathname.startsWith("/static-iiif/")) {
       const rest    = url.pathname.slice("/static-iiif/".length);
       const i       = rest.indexOf("/");
       const enc     = i < 0 ? rest : rest.slice(0, i);
       const suffix  = i < 0 ? "" : rest.slice(i);
-      const imgBase = decodeURIComponent(enc); // URL sans extension .jpg
-      if (!hostAllowed(imgBase)) return bad(400, "hôte non autorisé");
+      const dataOrig = decodeURIComponent(enc); // /mnt/lustre/ad21/num_ext/.../xxx.jpg
+
+      // Dérive l'URL cache : strip leading /, remplace / par _, _1080_1080_0_0_0_0_img.jpg
+      const cachePath = dataOrig.slice(1).replace(/\//g, "_").replace(/\.jpg$/i, "_1080_1080_0_0_0_0_img.jpg");
+      const cacheUrl  = `https://archives.cotedor.fr/cache/${cachePath}`;
+      if (!hostAllowed(cacheUrl)) return bad(400, "hôte non autorisé");
 
       const proxyBase = `${origin}/static-iiif/${enc}`;
 
-      // 4) info.json synthétique — on déclare level2 pour qu'Allmaps accepte le service ;
-      //    toutes les requêtes de tuiles renvoient le JPEG complet (voir bloc 5).
+      // 4) info.json — appelle genereImage (sans session) pour les vraies dimensions
       if (suffix === "/info.json" || suffix === "") {
-        const { w, h } = await fetchJpegDimensions(imgBase + ".jpg");
+        const genParams = new URLSearchParams({
+          l: 1080, h: 1080, r: 0, n: 0, b: 0, c: 0,
+          o: "IMG", id: "visu_image_1", image: dataOrig,
+        });
+        let w = 8000, h = 6000;
+        try {
+          const gr = await fetch(
+            `https://archives.cotedor.fr/v2/images/genereImage.html?${genParams}`,
+            { headers: BROWSER_HEADERS }
+          );
+          if (gr.ok) {
+            const parts = (await gr.text()).split("\t");
+            if (parts.length >= 6) {
+              const pw = parseInt(parts[4]);
+              const ph = parseInt(parts[5]);
+              if (pw > 0 && ph > 0) { w = pw; h = ph; }
+            }
+          }
+        } catch (_) {}
         return json({
           "@context": "http://iiif.io/api/image/2/context.json",
           "@id":      proxyBase,
@@ -179,9 +203,21 @@ export default {
         });
       }
 
-      // 5) toute requête d'image → renvoie le JPEG original (pleine résolution)
-      const r = await fetch(imgBase + ".jpg", { headers: BROWSER_HEADERS });
-      if (!r.ok) return bad(502, "image: " + r.status);
+      // 5) toute requête d'image (tile ou full) → sert depuis /cache/ avec CORS
+      let r = await fetch(cacheUrl, { headers: BROWSER_HEADERS });
+      if (!r.ok) {
+        // Cache pas encore générée : déclenche genereImage puis réessaie
+        const genParams = new URLSearchParams({
+          l: 1080, h: 1080, r: 0, n: 0, b: 0, c: 0,
+          o: "IMG", id: "visu_image_1", image: dataOrig,
+        });
+        await fetch(
+          `https://archives.cotedor.fr/v2/images/genereImage.html?${genParams}`,
+          { headers: BROWSER_HEADERS }
+        );
+        r = await fetch(cacheUrl, { headers: BROWSER_HEADERS });
+      }
+      if (!r.ok) return bad(502, "image cache: " + r.status);
       const headers = new Headers();
       headers.set("Content-Type", "image/jpeg");
       Object.entries(CORS).forEach(([k, v]) => headers.set(k, v));

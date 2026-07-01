@@ -24,9 +24,11 @@ BASE_AD21    = "https://archives.cotedor.fr"
 PAGES_BASE   = "https://sperrot.github.io/cadastre-napoleonien/manifests/ad21"
 VIEWER_BASE  = f"{BASE_AD21}/v2/ad21/visualiseur/cartes_plans.html?ir=23318&id="
 
-# URL de base du Cloudflare Worker déployé (wrangler deploy → iiif-allmaps.<compte>.workers.dev)
-# À mettre à jour après le premier `wrangler deploy`.
+# URL de base du Cloudflare Worker déployé
 PROXY_BASE   = "https://iiif-allmaps.sperrot.workers.dev"
+
+# Préfixe serveur ajouté à data_src pour reconstituer le data-original Archinoë
+MNTLUS_PREFIX = "/mnt/lustre/ad21"
 
 # Regex (réutilisés depuis harvest_cotedor.py)
 _RE_ITEM     = re.compile(r'<div id="item_(\d+)">')
@@ -64,10 +66,14 @@ def parse_lvl4(html):
 def make_manifest(item):
     import urllib.parse
     image_id    = item["image_id"]
-    image_url   = BASE_AD21 + item["data_src"]           # .jpg complet
-    img_base    = image_url[:-4] if image_url.endswith(".jpg") else image_url
-    enc_base    = urllib.parse.quote(img_base, safe="")  # pour l'URL du proxy
-    service_id  = f"{PROXY_BASE}/static-iiif/{enc_base}"
+    # data-original Archinoë = /mnt/lustre/ad21 + data_src (e.g. /num_ext/.../xxx.jpg)
+    data_orig   = MNTLUS_PREFIX + item["data_src"]
+    # URL cache dérivée déterministiquement (même logique que le Worker)
+    cache_file  = data_orig[1:].replace("/", "_").replace(".jpg", "_1080_1080_0_0_0_0_img.jpg")
+    image_url   = f"{BASE_AD21}/cache/{cache_file}"
+    # Encode le data-original path pour le Worker IIIF
+    enc_orig    = urllib.parse.quote(data_orig, safe="")
+    service_id  = f"{PROXY_BASE}/static-iiif/{enc_orig}"
 
     manifest_id = f"{PAGES_BASE}/{image_id}.json"
     canvas_id   = f"{manifest_id}/canvas/1"
