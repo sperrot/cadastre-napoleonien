@@ -38,10 +38,9 @@ select
 from document
 group by 1;
 
--- Les vues créées avec `security_invoker=true` sont automatiquement lisibles
--- par les rôles ayant SELECT sur les tables sous-jacentes (déjà accordé aux
--- rôles anon/authenticated dans schema.sql lignes 79-81). Aucun GRANT explicite
--- nécessaire.
+-- Malgré `security_invoker=true`, PostgREST filtre l'accès à la vue elle-même
+-- via GRANT (indépendamment du RLS). Sans ceci, l'appel front renvoie 401.
+grant select on v_document_stats_dept to anon, authenticated;
 
 comment on view v_document_stats_dept is
   'Compteurs par département consommés par la GED (web/app.js). '

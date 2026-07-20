@@ -73,11 +73,28 @@
       <button id="docs-refresh-btn" title="Rafraîchir les documents">↺</button>
     </div>
     <nav id="docs-breadcrumb" aria-label="fil d'Ariane"></nav>
-    <div id="docs-grid" class="cards-grid"></div>
+    <div id="docs-layout">
+      <aside id="docs-facets" hidden aria-label="Filtres de la sélection courante"></aside>
+      <div id="docs-main">
+        <div id="docs-sortbar" hidden>
+          <span class="docs-count"></span>
+          <label>Tri :
+            <select id="docs-sort">
+              <option value="type-asc">Type (assemblage → feuilles)</option>
+              <option value="annee-asc">Année ↑</option>
+              <option value="annee-desc">Année ↓</option>
+              <option value="cote-asc">Cote (alpha.)</option>
+              <option value="commune-asc">Commune (alpha.)</option>
+            </select>
+          </label>
+        </div>
+        <div id="docs-grid" class="cards-grid"></div>
+      </div>
+    </div>
   </section>
 
   <!-- Copier config.example.js → config.js et renseigner Supabase -->
   <script src="config.js"></script>
-  <script src="app.js?v=20260720d"></script>
+  <script src="app.js?v=20260720h"></script>
 </body>
 </html>
