@@ -13,6 +13,10 @@ Thumbs.db
 # Cache disque du harvester
 harvest/.cache/
 
+# Secrets locaux (clé service_role Supabase, etc.)
+.env
+*.env
+
 # Données sources brutes (téléchargées, volumineuses, à régénérer)
 download/
 
