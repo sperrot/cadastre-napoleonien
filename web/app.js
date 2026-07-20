@@ -693,7 +693,7 @@ async function openDocs() {
     grid.innerHTML = `<p class="empty-state">Chargement des documents…</p>`;
     await loadDocsData();
   }
-  if (docsData) renderDeptCards();
+  if (docsData) renderRegionCards();
 }
 
 /* --- Bouton rafraîchir --- */
@@ -710,6 +710,95 @@ if (sb) {
       if (!document.getElementById("docs-view").hidden) openDocs();
     })
     .subscribe();
+}
+
+/* --- Régions administratives (17 : métropole + Corse + DROM/Paris hors nav) -- *
+ * Mapping code_dept → id_région ; libellés dans REGIONS. Une région peut
+ * n'être qu'une case grisée si aucun de ses départements n'est chargé.
+ * -------------------------------------------------------------------------- */
+const REGIONS = {
+  ara:  { nom: "Auvergne-Rhône-Alpes",         depts: ["01","03","07","15","26","38","42","43","63","69","73","74"] },
+  bfc:  { nom: "Bourgogne-Franche-Comté",      depts: ["21","25","39","58","70","71","89","90"] },
+  bre:  { nom: "Bretagne",                     depts: ["22","29","35","56"] },
+  cvl:  { nom: "Centre-Val de Loire",          depts: ["18","28","36","37","41","45"] },
+  cor:  { nom: "Corse",                        depts: ["2A","2B"] },
+  ges:  { nom: "Grand Est",                    depts: ["08","10","51","52","54","55","57","67","68","88"] },
+  hdf:  { nom: "Hauts-de-France",              depts: ["02","59","60","62","80"] },
+  idf:  { nom: "Île-de-France",                depts: ["75","77","78","91","92","93","94","95"] },
+  nor:  { nom: "Normandie",                    depts: ["14","27","50","61","76"] },
+  naq:  { nom: "Nouvelle-Aquitaine",           depts: ["16","17","19","23","24","33","40","47","64","79","86","87"] },
+  occ:  { nom: "Occitanie",                    depts: ["09","11","12","30","31","32","34","46","48","65","66","81","82"] },
+  pdl:  { nom: "Pays de la Loire",             depts: ["44","49","53","72","85"] },
+  pac:  { nom: "Provence-Alpes-Côte d'Azur",   depts: ["04","05","06","13","83","84"] },
+};
+const DEPT_TO_REGION = Object.fromEntries(
+  Object.entries(REGIONS).flatMap(([id, r]) => r.depts.map((d) => [d, id]))
+);
+
+/* --- Niveau -1 : cards régions --- */
+function renderRegionCards() {
+  setBreadcrumb([{ label: "Régions" }]);
+  const grid = docsGridEl();
+  // Agréger par région les compteurs des départements chargés
+  const stats = new Map();
+  for (const db of docsData.values()) {
+    const r = DEPT_TO_REGION[db.code];
+    if (!r) continue;
+    const nbDocs = [...db.communes.values()].reduce((n, c) => n + c.docs.length, 0);
+    const s = stats.get(r) || { nbDocs: 0, nbDepts: 0, sample: null };
+    s.nbDocs += nbDocs;
+    s.nbDepts += 1;
+    if (!s.sample) s.sample = firstManifestOfDept(db) || firstImageOfDept(db);
+    stats.set(r, s);
+  }
+  const cards = Object.entries(REGIONS).map(([id, r]) => {
+    const s = stats.get(id) || { nbDocs: 0, nbDepts: 0, sample: null };
+    const covered = s.nbDepts;
+    const empty = covered === 0;
+    const meta = empty
+      ? `<span class="ged-muted">${r.depts.length} départements · données à venir</span>`
+      : `${covered} / ${r.depts.length} départements · ${s.nbDocs.toLocaleString("fr")} documents`;
+    return `<button class="ged-card region${empty ? " ged-empty" : ""}" data-region="${id}">
+      ${thumbMarkup(s.sample, null, "🗺️")}
+      <div class="ged-card-body">
+        <h3>${escape(r.nom)}</h3>
+        <p class="ged-meta">${meta}</p>
+      </div>
+    </button>`;
+  });
+  grid.innerHTML = cards.join("");
+  grid.querySelectorAll("[data-region]").forEach((el) => {
+    el.addEventListener("click", () => openRegion(el.dataset.region));
+  });
+  hydrateThumbs(grid);
+}
+
+/* --- Niveau 0 : cards départements d'une région --- */
+function openRegion(regId) {
+  const region = REGIONS[regId];
+  if (!region) return;
+  setBreadcrumb([
+    { label: "Régions", onClick: renderRegionCards },
+    { label: region.nom },
+  ]);
+  const grid = docsGridEl();
+  // Cards pour chaque dept de la région : chargé ou placeholder
+  const cards = region.depts.map((code) => {
+    const db = docsData.get(code);
+    if (db) return deptCard(db);
+    return `<div class="ged-card ged-empty">
+      <div class="ged-thumb"><span class="ged-thumb-ph">🗺️</span></div>
+      <div class="ged-card-body">
+        <h3>Département ${escape(code)} <span class="ged-code">${escape(code)}</span></h3>
+        <p class="ged-meta ged-muted">Aucun document chargé pour l'instant</p>
+      </div>
+    </div>`;
+  });
+  grid.innerHTML = cards.join("");
+  grid.querySelectorAll("[data-dept]").forEach((el) => {
+    el.addEventListener("click", () => openDept(el.dataset.dept));
+  });
+  hydrateThumbs(grid);
 }
 
 /* --- Fil d'Ariane --- */
@@ -730,9 +819,13 @@ function setBreadcrumb(crumbs) {
   );
 }
 
-/* --- Niveau 0 : cards départements --- */
+/* --- Niveau 0 (plat, non utilisé par l'entrée principale : conservé pour
+ * les liens directs éventuels vers un ancien historique / bouton refresh) --- */
 function renderDeptCards() {
-  setBreadcrumb([{ label: "Départements" }]);
+  setBreadcrumb([
+    { label: "Régions", onClick: renderRegionCards },
+    { label: "Tous les départements" },
+  ]);
   const grid = docsGridEl();
   const depts = [...docsData.values()].sort((a, b) => a.code.localeCompare(b.code));
   grid.innerHTML = depts.map(deptCard).join("");
@@ -772,8 +865,13 @@ function deptCard(db) {
 function openDept(code) {
   const db = docsData.get(code);
   if (!db) return;
+  const regId = DEPT_TO_REGION[code];
+  const region = regId ? REGIONS[regId] : null;
   setBreadcrumb([
-    { label: "Départements", onClick: renderDeptCards },
+    { label: "Régions", onClick: renderRegionCards },
+    ...(region
+      ? [{ label: region.nom, onClick: () => openRegion(regId) }]
+      : [{ label: "Départements", onClick: renderDeptCards }]),
     { label: `${db.nom} (${db.code})` },
   ]);
   const grid = docsGridEl();
@@ -894,20 +992,76 @@ function thumbFromManifest(m) {
   return null;
 }
 
-async function hydrateThumbs(root) {
-  await Promise.all(
-    [...root.querySelectorAll(".ged-thumb[data-manifest]")].map(async (el) => {
-      const url = await iiifThumbnail(el.dataset.manifest);
-      if (!el.isConnected || !url) return;
-      const img = new Image();
-      img.loading = "lazy";
-      img.alt = "";
-      img.onload = () => {
-        if (el.isConnected) el.replaceChildren(img);
-      };
-      img.src = url; // si erreur de chargement → le placeholder reste
-    })
-  );
+/* --- Chargement paresseux des vignettes IIIF --------------------------
+ * L'ancien Promise.all lançait ~450 fetches manifestes en parallèle : la
+ * limite navigateur (~6 connexions/hôte) faisait piétiner la file et aucune
+ * vignette n'atteignait le DOM avant que l'utilisateur change de vue.
+ *
+ * Nouveau : IntersectionObserver + file d'attente à concurrence limitée
+ * (MAX_INFLIGHT). Un thumb n'est demandé qu'à son entrée dans le viewport
+ * (rootMargin 200 px). Le placeholder emoji reste visible tant que le
+ * manifeste + son image ne sont pas résolus.
+ * ---------------------------------------------------------------------- */
+const MAX_INFLIGHT_THUMBS = 6;
+let inflightThumbs = 0;
+const thumbQueue = [];
+
+function drainThumbQueue() {
+  while (inflightThumbs < MAX_INFLIGHT_THUMBS && thumbQueue.length) {
+    const el = thumbQueue.shift();
+    if (!el.isConnected) continue;
+    inflightThumbs++;
+    (async () => {
+      try {
+        const url = await iiifThumbnail(el.dataset.manifest);
+        if (!el.isConnected || !url) return;
+        const img = new Image();
+        // NB : pas de `img.loading = "lazy"` ici — la spec bloque le fetch tant
+        // que l'IMG n'est pas attachée au DOM, or on utilise `new Image()`
+        // détachée puis on l'injecte via replaceChildren dans onload.
+        img.alt = "";
+        img.onload = () => {
+          if (el.isConnected) el.replaceChildren(img);
+        };
+        img.src = url;
+      } finally {
+        inflightThumbs--;
+        drainThumbQueue();
+      }
+    })();
+  }
+}
+
+const thumbObserver = new IntersectionObserver(
+  (entries) => {
+    for (const entry of entries) {
+      if (!entry.isIntersecting) continue;
+      const el = entry.target;
+      thumbObserver.unobserve(el);
+      thumbQueue.push(el);
+    }
+    drainThumbQueue();
+  },
+  { rootMargin: "200px" }
+);
+
+function hydrateThumbs(root) {
+  const vh = window.innerHeight;
+  const vw = window.innerWidth;
+  const MARGIN = 200;
+  for (const el of root.querySelectorAll(".ged-thumb[data-manifest]")) {
+    // Fallback : pousser immédiatement à la queue les thumbs déjà visibles.
+    // Sinon on dépend uniquement d'IntersectionObserver, qui ne firing pas
+    // dans certains renderers headless (Browser pane MCP) ou avant premier
+    // scroll. L'observer prend le relais pour les thumbs plus bas.
+    const r = el.getBoundingClientRect();
+    if (r.bottom > -MARGIN && r.top < vh + MARGIN && r.right > -MARGIN && r.left < vw + MARGIN) {
+      thumbQueue.push(el);
+    } else {
+      thumbObserver.observe(el);
+    }
+  }
+  drainThumbQueue();
 }
 
 /* --- Recherche / autocomplétion (≥ 3 caractères) --- */

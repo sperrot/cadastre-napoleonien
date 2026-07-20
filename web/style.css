@@ -376,6 +376,10 @@ button.ged-card:hover { border-color: var(--accent); transform: translateY(-2px)
 .ged-link { color: var(--accent); text-decoration: none; font-weight: 600; font-size: .85rem; }
 .ged-link:hover { text-decoration: underline; }
 .ged-empty { color: var(--muted); font-size: .82rem; font-style: italic; }
+.ged-muted { color: var(--muted); font-style: italic; }
+/* Cards régions/dépts à couverture nulle : ton neutre, non cliquable */
+div.ged-card.ged-empty { opacity: .55; background: #f5f2ea; cursor: default; }
+div.ged-card.ged-empty:hover { transform: none; border-color: var(--line); }
 
 .ged-sections { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 2px; }
 .ged-chip {
