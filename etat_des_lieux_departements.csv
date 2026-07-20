@@ -1,0 +1,97 @@
+code,departement,niveau,verifie,source_type,source_url,formats,licence,licence_cat,commentaire
+01,Ain,N4,oui,FranceArchives + AD (Ligeo),https://www.archives.ain.fr/n/archives-cadastrales/n:397,"ARK, IIIF",Réutilisation OK (CGU AD01),cgu,Cadastre complet 463 communes (findingaid FA) ; manifeste IIIF direct dans Allmaps confirmé ; seed repo en cours
+02,Aisne,N2,non,AD (Ligeo),https://archives.aisne.fr/archive/recherche/cadastres/n:12,JPG (visionneuse),À vérifier,inconnue,Cadastre en ligne ; IIIF probable (famille Ligeo) à tester
+03,Allier,N2,non,AD (Arkothèque),https://archives.allier.fr/archives-en-ligne/cartes-plans-documents-figures/cadastre-napoleonien,JPG (visionneuse),À vérifier,inconnue,
+04,Alpes-de-Haute-Provence,N2,non,AD (portail),https://www.archives04.fr/s/15/cadastre/,JPG (visionneuse),À vérifier,inconnue,
+05,Hautes-Alpes,N2,non,AD (Ligeo),https://archives.hautes-alpes.fr/archive/resultats/cadastrenumerise/n:199?type=cadastrenumerise,JPG (visionneuse),À vérifier,inconnue,~1 800 docs cadastre numérisés référencés FranceArchives
+06,Alpes-Maritimes,N2,non,AD (Ligeo),https://archives06.fr/archive/resultats/cadastre2/n:104?type=cadastre2,"JPG, IIIF partiel",À vérifier,inconnue,~100 docs IIIF référencés FranceArchives (partiel)
+07,Ardèche,N2,non,AD (Ligeo),https://archives.ardeche.fr/archive/recherche/planscadastraux/n:102,JPG (visionneuse),À vérifier,inconnue,
+08,Ardennes,N2,non,AD (Arkothèque),https://archives.cd08.fr/arkotheque/consult_fonds/index.php?ref_fonds=2,JPG (visionneuse),À vérifier,inconnue,
+09,Ariège,N1,non,AD (portail),https://archives.ariege.fr/rechercher-et-consulter/archives-en-ligne/,—,À vérifier,inconnue,Compoix numérisés en ligne ; plans du cadastre napoléonien (3P) non identifiés en ligne
+10,Aube,N2,non,AD (Arkothèque),https://www.archives-aube.fr/recherches/documents-numerises/cadastre-cartes-et-plans/cadastre-napoleonien,JPG (visionneuse),À vérifier,inconnue,
+11,Aude,N2,non,AD (portail),https://archivesdepartementales.aude.fr/les-archives-en-ligne,JPG (visionneuse),À vérifier,inconnue,"Cadastre parmi les 3,7 M pages numérisées ; page dédiée à confirmer"
+12,Aveyron,N2,non,AD (Ligeo),https://archives.aveyron.fr/archive/recherche/cadastre/n:23,JPG (visionneuse),À vérifier,inconnue,
+13,Bouches-du-Rhône,N2,non,AD (Ligeo),https://www.archives13.fr/archive/recherche/cadastre/n:36,JPG (visionneuse),À vérifier,inconnue,
+14,Calvados,N2,oui,FranceArchives + AD (Mnesys),https://archives.calvados.fr/search/form/dfc4e27b-4f7e-431e-b413-655e793be3b7,ARK (sans IIIF),Réutilisation OK (CGU AD14),cgu,Moissonnable FA mais pas de manifeste IIIF (visionneuse ARK) ; harvester repo à adapter
+15,Cantal,N2,non,AD (portail),https://archives.cantal.fr/rechercher/cadastre-et-archives-foncieres,JPG (visionneuse),À vérifier,inconnue,
+16,Charente,N4,non,FranceArchives + AD (Ligeo),https://lasource.archives.lacharente.fr/archive/resultats/cadastre/n:125?type=cadastre,IIIF,À vérifier,inconnue,Numérisation intégrale confirmée (portail La Source testé) ; ≈11 000 docs cadastre en IIIF via FranceArchives → candidat prioritaire de moisson
+17,Charente-Maritime,N2,non,AD (Archinoë),http://www.archinoe.net/v2/ad17/cadastre.html,JPG (visionneuse),À vérifier,inconnue,Pipeline Archinoë→IIIF du repo (AD21) applicable
+18,Cher,N2,non,AD (Arkothèque),https://www.archives18.fr/archives-numerisees/plans-du-cadastre,JPG (visionneuse),À vérifier,inconnue,
+19,Corrèze,N2,non,AD (Archinoë),http://www.archinoe.fr/cg19/cadastre.php,JPG (visionneuse),À vérifier,inconnue,≈4 600 docs numérisés référencés FranceArchives ; pipeline Archinoë applicable
+21,Côte-d'Or,N2,oui,AD (Archinoë),https://archives.cotedor.fr/v2/site/AD21/Rechercher/Recherche_thematique/Cartes_et_plans,"JPG, IIIF (généré repo)",Réutilisation soumise aux CGU AD21,cgu,7 976 manifestes IIIF statiques générés par le repo (pipeline Archinoë→worker) ; overlay public non autorisé
+22,Côtes-d'Armor,N5,oui,Open data Région Bretagne + AD (Ligeo),https://www.data.gouv.fr/datasets/assemblage-des-feuilles-du-cadastre-napoleonien-en-bretagne-2,"SHP, WMS, WFS + JPG",Licence Ouverte 2.0,ouverte,Contours des feuilles + tableau d'assemblage vectorisés (région) ; feuilles image via AD
+23,Creuse,N2,non,AD (Arkothèque),https://archives.creuse.fr/rechercher/archives-numerisees/cadastre-napoleonien,JPG (visionneuse),À vérifier,inconnue,
+24,Dordogne,N2,non,AD (Arkothèque),https://archives.dordogne.fr/archives-numerisees/cadastre-napoleonien,JPG (visionneuse),À vérifier,inconnue,
+25,Doubs,N3,oui,data.gouv + AD (Mnesys),https://www.data.gouv.fr/datasets/planches-du-cadastre-napoleonien,"JPG téléchargeable, CSV/JSON, IIIF (worker repo)",ODbL,ouverte,~5 700 planches JPEG en open data ; 633 feuilles seedées (worker JPEG→IIIF) ; visionneuse Mnesys sans manifeste accessible
+26,Drôme,N2,non,AD (Mnesys),https://archives.ladrome.fr/search/form/47e6db60-8648-42ca-8415-539025d51807,ARK (visionneuse),À vérifier,inconnue,
+27,Eure,N2,non,AD (portail),https://archives.eure.fr/search?preset=106&view=list,JPG (visionneuse),À vérifier,inconnue,
+28,Eure-et-Loir,N2,non,AD (Arkothèque),https://archives28.fr/archives-et-inventaires-en-ligne/fonds-iconographiques/plans-du-cadastre-napoleonien-3-p,JPG (visionneuse),À vérifier,inconnue,
+29,Finistère,N5,oui,Open data Région Bretagne + AD,https://archives.finistere.fr/espace-de-recherche-dans-le-cadastre,"SHP, WMS, WFS + JPG",Licence Ouverte 2.0,ouverte,Contours vectorisés (région) ; espace cadastre AD ; Brest métropole diffuse aussi un WMS
+30,Gard,N2,non,AD (Ligeo),https://earchives.gard.fr/document/FRAD030_3_PFi,JPG (visionneuse),À vérifier,inconnue,"≈19 600 docs numérisés référencés FA ; Nîmes 1825 vectorisée en accès libre (GPKG Nakala, ANR PARCEDES)"
+31,Haute-Garonne,N3,oui,data.gouv + AD (Ligeo),https://www.data.gouv.fr/datasets/cadastre-napoleonien-des-communes-de-la-haute-garonne,"JPG téléchargeable (villes >10 000 hab), CSV/JSON + IIIF (AD)",Licence Ouverte 2.0 (open data) / CGU AD31,ouverte,"Cas mixte : open data grandes villes, reste via AD ; manifeste IIIF AD direct dans Allmaps confirmé ; seed repo"
+32,Gers,N2,non,AD (portail),http://www.archives32.fr/FondsNumerises/index.php?type=2,JPG (visionneuse),À vérifier,inconnue,
+33,Gironde,N2,non,AD (Ligeo),https://archives.gironde.fr/archive/recherche/cadastre/n:91,JPG (visionneuse),À vérifier,inconnue,≈7 700 docs numérisés référencés FranceArchives
+34,Hérault,N2,non,AD (Pierresvives),http://archives-pierresvives.herault.fr/archives/recherche/cadastre,JPG (visionneuse),À vérifier,inconnue,≈15 000 docs numérisés référencés FranceArchives
+35,Ille-et-Vilaine,N5,oui,Open data Région Bretagne + AD (THOT),http://archives-en-ligne.ille-et-vilaine.fr/thot_internet/FrmSommaireFrame.asp,"SHP, WMS, WFS + JPG",Licence Ouverte 2.0,ouverte,Contours vectorisés (région) ; visualiseur THOT côté AD
+36,Indre,N2,non,AD (Bach),http://www.archives36.fr/f/Cadastre/mosaique/,JPG (visionneuse),À vérifier,inconnue,
+37,Indre-et-Loire,N2,non,AD (Mnesys),https://archives.touraine.fr/search/form/0883f4b0-8c3d-427b-8618-d9e67239068b,ARK (visionneuse),À vérifier,inconnue,≈12 700 docs numérisés référencés FA (beaucoup d'E-dépôts communaux)
+38,Isère,N2,non,AD (Arkothèque),https://archivesenligne1.archives-isere.fr/cadastre,JPG (visionneuse),À vérifier,inconnue,
+39,Jura,N2,oui,AD (Mnesys),https://archives39.fr/search/form/0a4fae72-ee28-4663-ac8f-e4a4e89ebc68,ARK (visionneuse),Restrictive : rediffusion/modification interdites,fermee,≈8 800 docs numérisés référencés FA ; manifeste IIIF caché derrière la SPA ; licence bloquante pour overlay
+40,Landes,N2,non,AD (Arkothèque),http://www.archives.landes.fr/arkotheque/consult_fonds/index.php?ref_fonds=1,JPG (visionneuse),À vérifier,inconnue,
+41,Loir-et-Cher,N2,non,AD (portail),http://archives.culture41.fr/archives/recherche/cadastre,JPG (visionneuse),À vérifier,inconnue,
+42,Loire,N2,non,AD (Ligeo),https://archives.loire.fr/archive/recherche/cadastre/n:133,JPG (visionneuse),À vérifier,inconnue,
+43,Haute-Loire,N2,non,AD (portail),https://www.archives43.fr/archives-en-ligne/territoires-altiligeriens,JPG (visionneuse),À vérifier,inconnue,
+44,Loire-Atlantique,N2,non,AD (Archinoë),https://archives-numerisees.loire-atlantique.fr/v2/ad44/cadastre.html,JPG (visionneuse),À vérifier,inconnue,Pipeline Archinoë applicable ; vérifier le « Cadastre Napoléonien Régional » du catalogue GéoPAL (Pays de la Loire)
+45,Loiret,N2,non,AD (Arkothèque) + data.gouv,https://www.archives-loiret.fr/faire-vos-recherches/archives-numerisees/cadastre-napoleonien,JPG (visionneuse) + ZIP toponymes,Licence Ouverte 2.0 (toponymes),inconnue,"Toponymes du cadastre vectorisés en open data → géoréférencement sous-jacent probable, plans non publiés en géoréf"
+46,Lot,N2,non,AD (Bach),http://archives.lot.fr/f/CadastreNapoleonien/mosaique/,JPG (visionneuse),À vérifier,inconnue,
+47,Lot-et-Garonne,N2,non,AD (Archinoë),http://www.archinoe.fr/v2/ad47/cadastre.html,JPG (visionneuse),À vérifier,inconnue,Pipeline Archinoë applicable
+48,Lozère,N2,non,AD (Ligeo),http://archives.lozere.fr/archive/recherche/cadastre/n:14,JPG (visionneuse),À vérifier,inconnue,
+49,Maine-et-Loire,N2,non,AD (portail),http://www.archives49.fr/acces-directs/archives-en-ligne/plans-cadastraux-napoleoniens/,JPG (visionneuse),À vérifier,inconnue,
+50,Manche,N2,non,AD (portail),https://www.archives-manche.fr/e/RechercheTransversale?from=0&f_92%5B0%5D=cadastre&f_87%5B0%5D=Cadastre+napol%E9onien,JPG (visionneuse),À vérifier,inconnue,
+51,Marne,N2,oui,AD (Mnesys),https://archives.marne.fr/search/form/f3530583-c23e-4b18-9497-6fd477446b28,ARK (visionneuse),À vérifier,inconnue,≈23 500 docs numérisés référencés FA (plus gros volume) ; cible pipeline Mnesys V0.6 du repo
+52,Haute-Marne,N2,non,AD (portail),http://archives.haute-marne.fr/archives/search/default/%252A%253A%252A?filter_field=dyndescr_cSubject_liste-sousDomaine&filter_value=Cartes+et+plans,JPG (visionneuse),À vérifier,inconnue,
+53,Mayenne,N2,non,AD (Ligeo),https://chercher-archives.lamayenne.fr/archives-en-ligne/cadastre-search-form.html,JPG (visionneuse),À vérifier,inconnue,
+54,Meurthe-et-Moselle,N2,non,AD (portail),http://archives.meurthe-et-moselle.fr/archives-en-ligne/plans-cadastraux-napol%C3%A9oniens-de-meurthe-et-moselle,JPG (visionneuse),À vérifier,inconnue,
+55,Meuse,N2,non,AD (portail),http://archives.meuse.fr/search?preset=28&view=list,JPG (visionneuse),À vérifier,inconnue,
+56,Morbihan,N5,oui,Open data Région Bretagne + AD (Ligeo),https://recherche.archives.morbihan.fr/archive/recherche/cadastre/n:7,"SHP, WMS, WFS + JPG, IIIF partiel",Licence Ouverte 2.0,ouverte,Contours vectorisés (région) ; ~240 docs IIIF référencés FA
+57,Moselle,N2,non,AD (portail),http://www.archives57.com/index.php/recherches/archives-en-ligne/cadastre,JPG (visionneuse),À vérifier,inconnue,
+58,Nièvre,N2,non,AD (Mnesys),https://archives.nievre.fr/search/form/5dea445a-5b66-4d4d-a1ea-6cffb70ec9cf,ARK (visionneuse),À vérifier,inconnue,≈4 600 docs numérisés référencés FranceArchives
+59,Nord,N2,non,AD (Mnesys),https://archivesdepartementales.lenord.fr/editorial/page/7dcf6e86-7a43-46de-be0e-d37b28d6731b,ARK (visionneuse),À vérifier,inconnue,Plans du cadastre du Consulat et napoléonien
+60,Oise,N2,non,AD (portail),https://archives.oise.fr/rechercher/archives-en-ligne/cartes-et-plans,JPG (visionneuse),À vérifier,inconnue,Plans napoléoniens + plans par masses de cultures en ligne
+61,Orne,N2,non,AD (portail),https://archives.orne.fr/cadastre,JPG (visionneuse),À vérifier,inconnue,
+62,Pas-de-Calais,N2,non,AD (Archinoë),https://archivesenligne.pasdecalais.fr/console/ir_seriel.php?id=56&p=formulaire_cadastre,JPG (visionneuse),À vérifier,inconnue,Pipeline Archinoë applicable
+63,Puy-de-Dôme,N2,non,AD (Ligeo),http://www.archivesdepartementales.puydedome.fr/archive/recherche/cadastre/n:109,JPG (visionneuse),À vérifier,inconnue,≈5 100 docs numérisés référencés FranceArchives
+64,Pyrénées-Atlantiques,N2,non,AD (Pleade),https://earchives.le64.fr/archives-en-ligne/cadastre-search-form.html,JPG (visionneuse),À vérifier,inconnue,Numérisation complète des plans 1810-1846
+65,Hautes-Pyrénées,N2,non,AD (Arkothèque),http://www.archivesenligne65.fr/article.php?laref=476&titre=les-plans-cadastraux,JPG (visionneuse),À vérifier,inconnue,
+66,Pyrénées-Orientales,N2,oui,AD (portail),http://archives.cd66.fr,JPG (visionneuse),Réutilisation libre affichée (mention provenance),ouverte,Plans cadastraux napoléoniens en ligne (confirmé) ; réutilisation libre et gratuite avec mention ; ⚠️ accès bloqué depuis l'étranger
+67,Bas-Rhin,N2,non,AD Alsace (portail),https://archives.bas-rhin.fr/rechercher/aide-a-recherche/un-lieu-ou-un-monument-/mener-une-recherche-dans-documents-cadastraux/,JPG (visionneuse),À vérifier,inconnue,"6 948 plans numérisés (1807-1868), couverture complète"
+68,Haut-Rhin,N2,non,AD Alsace (Mnesys),https://archives68.alsace.eu/search/form/d58ae5e0-4a93-4114-9097-ea2a854dba55,ARK (visionneuse),À vérifier,inconnue,Partiel : plan « village » + tableau d'assemblage numérisés
+69,Rhône,N2,non,AD (Mnesys),http://archives.rhone.fr/#recherche_cadastre,ARK (visionneuse),À vérifier,inconnue,
+70,Haute-Saône,N2,non,AD (Ligeo),http://archives.haute-saone.fr/archive/recherche/cadastre/n:135,JPG (visionneuse),À vérifier,inconnue,
+71,Saône-et-Loire,N3,oui,Open data AD71 (Arkothèque),https://www.archives71.fr/arkotheque/consult_fonds/index.php?ref_fonds=38,"JPG téléchargeable, CSV, IIIF (worker repo)",Licence Ouverte,ouverte,9 707 feuilles seedées dans le repo depuis le CSV open data (worker JPEG→IIIF)
+72,Sarthe,N2,non,AD (Bach),http://archives.sarthe.fr/f/cadastrenapoleonien/tableau/,JPG (visionneuse),À vérifier,inconnue,
+73,Savoie,N2,non,AD (Mnesys),http://enligne.savoie-archives.fr/?id=recherche_guidee_cadastre_web,JPG (visionneuse),À vérifier,inconnue,Voir aussi la mappe sarde (cadastre savoyard antérieur)
+74,Haute-Savoie,N2,non,AD (Mnesys),http://archives.hautesavoie.fr/?id=388,JPG (visionneuse),À vérifier,inconnue,≈22 200 docs numérisés référencés FA (2e volume national) → candidat pipeline Mnesys
+76,Seine-Maritime,N2,non,AD (Mnesys),http://recherche.archivesdepartementales76.net/?id=recherche_guidee_cadastre,JPG (visionneuse),À vérifier,inconnue,
+77,Seine-et-Marne,N2,non,AD (portail),https://archives.seine-et-marne.fr/fr/plans-du-cadastre-napoleonien,JPG (visionneuse),À vérifier,inconnue,
+78,Yvelines,N2,non,AD (portail),http://www.archives.yvelines.fr/article.php?larub=28&titre=cadastre-napoleonien,JPG (visionneuse),À vérifier,inconnue,
+79,Deux-Sèvres,N4,non,"FranceArchives + AD (Ligeo, portail mutualisé 79/86)",https://archives-deux-sevres-vienne.fr/archive/resultats/autrecadastre/n:99?type=autrecadastre,IIIF (partiel),À vérifier,inconnue,≈1 100 docs cadastre en IIIF via FranceArchives → moissonnable
+80,Somme,N2,non,AD (Mnesys),https://archives.somme.fr/search/form/e49b14d1-178f-4fe9-bdb1-30d705a42c01,ARK (visionneuse),À vérifier,inconnue,≈13 300 docs numérisés référencés FA (dont plans par masses de cultures)
+81,Tarn,N2,non,AD (portail),https://archives.tarn.fr/rechercher/archives-et-images-en-ligne/documents-numerises/cadastre-napoleonien-plans-parcellaires-communaux,JPG (visionneuse),À vérifier,inconnue,
+82,Tarn-et-Garonne,N4,non,AD + SIG départemental (SIGD),http://www.archives82.fr/rechercher-et-consulter/archives-en-ligne/cadastres.html,WebGIS (consultation seule),Fermée (pas d'export identifié),fermee,"2 696 plans géoréférencés, vectorisés et mosaïqués (2012) via « Web Cadastre Napoléonien » (carto.ledepartement82.fr), superposables au cadastre actuel ; pas de téléchargement libre identifié"
+83,Var,N2,non,AD (Arkothèque),http://www.archives.var.fr/arkotheque/consult_fonds/index.php?ref_fonds=6,JPG (visionneuse),À vérifier,inconnue,Plans + matrices
+84,Vaucluse,N5,oui,data.gouv + SIG dép. (Lizmap) + AD (Ligeo),https://www.data.gouv.fr/datasets/cadastre-napoleonien-geo-reference-vaucluse-et-sections-cadastrales-associees-1-2,"GeoTIFF, WMS, SHP (sections) + JPG",Licence Ouverte 2.0,ouverte,Raster géoréférencé + sections vectorisées en open data ; visualiseur maps.vaucluse.fr
+85,Vendée,N5,non,Recherche (Nakala/Huma-Num) + SIG ArcGIS + AD,https://www.nakala.fr/10.34847/nkl.1f590t6u,"GPKG (vecteur), WebGIS ArcGIS + JPG",Ouverte (Nakala) / ArcGIS à vérifier,ouverte,Partiel : CadNap85 sud-Vendée (29 communes) vectorisé en GPKG libre (ANR PARCEDES) ; plateforme collaborative ArcGIS départementale (86 669 parcelles) non librement exportable
+86,Vienne,N2,non,"AD (Ligeo, portail mutualisé 79/86)",https://archives-deux-sevres-vienne.fr/archive/resultats/autrecadastre/n:99?type=autrecadastre,"JPG, IIIF (traces)",À vérifier,inconnue,Quelques docs IIIF référencés FA ; même serveur que 79 → potentiel identique à confirmer
+87,Haute-Vienne,N2,non,AD (Bach),http://archives.haute-vienne.fr/f/cadastre/tableau/,JPG (visionneuse),À vérifier,inconnue,
+88,Vosges,N4,oui,FranceArchives + AD (Ligeo),http://www.archives-recherche.vosges.fr/recherche-en-ligne/base-de-donnees-et-images-numerisees9,IIIF,Licence Ouverte 2.0,ouverte,"Moissonné par le repo : 5 691 docs / 453 communes, 100 % overlay_ok"
+89,Yonne,N2,non,AD (portail),http://archivesenligne.yonne-archives.fr/archives/recherche/cadastre,JPG (visionneuse),À vérifier,inconnue,
+90,Territoire de Belfort,N2,non,AD (Mnesys),https://archives.territoiredebelfort.fr/search/form/a4ac06cb-f05c-4c27-9a8e-6ce15ce29a32,ARK (visionneuse),À vérifier,inconnue,
+91,Essonne,N2,non,AD (Mnesys),https://archives.essonne.fr/search/form/a94f4fea-30c7-4d17-aaf9-d5e5924e934d,ARK (visionneuse),À vérifier,inconnue,≈4 800 docs numérisés référencés FranceArchives
+92,Hauts-de-Seine,N5,oui,data.gouv + AD (Ligeo),https://www.data.gouv.fr/datasets/cadastre-napoleonien-assemblage-departemental,"SHP (assemblage), JPG+JGW géoréférencés téléchargeables, CSV/JSON",Licence Ouverte (Etalab),ouverte,Assemblage départemental vectorisé + toutes les feuilles géoréférencées (RGF93-CC49) téléchargeables
+93,Seine-Saint-Denis,N4,oui,Open data CG93 + FranceArchives + AD,https://opendata.seine-saint-denis.fr,"Dalles géoréférencées (bbox), IIIF",Licence Ouverte,ouverte,Pilote du repo : 252 dalles géoréf seedées + 550 docs IIIF moissonnables FA ; vectorisation évoquée mais non trouvée publiée ; 2 communes à re-moissonner
+94,Val-de-Marne,N2,non,AD (Bach),http://archives.valdemarne.fr/f/Cadastre/tableau/,JPG (visionneuse),À vérifier,inconnue,
+95,Val-d'Oise,N4,oui,FranceArchives + AD (Ligeo),https://archives.valdoise.fr/archive/recherche/cadastre/n:681,"ARK, IIIF",Réutilisation OK (CGU AD95),cgu,"Moissonné par le repo : 1 477 feuilles, 187 communes ; manifeste IIIF direct Allmaps (profil famille FOND.TIF)"
+2A,Corse-du-Sud,N1,non,AD (THOT) + data.corsica,https://www.data.corsica/explore/dataset/le-plan-terrier-de-la-corse-archive-de-corse-et-de-vincennes/,JPG (plan terrier),À vérifier,inconnue,Plan terrier (1771-1796) en open data ; cadastre napoléonien en cours de mise en ligne
+2B,Haute-Corse,N1,non,AD (THOT),https://archives.isula.corsica/internet_thot/frmsommaireframe.asp,—,À vérifier,inconnue,Portail Collectivité de Corse ; cadastre napoléonien non clairement en ligne
+75,Paris,N2,oui,AC Paris (portail),https://archives.paris.fr/archives-numerisees/documents-iconographiques/plans-parcellaires/accedez-aux-plans-de-paris-dans-ses-limites-avant-1860,JPG (visionneuse),À vérifier,inconnue,Hors périmètre stats. Atlas Vasserot (1810-1836) + Vasserot et Bellanger (1830-1850) pour Paris avant 1860 ; cadastre napoléonien des communes annexées (1808-1825) et sa révision (1830-1850)

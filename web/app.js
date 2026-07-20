@@ -54,36 +54,48 @@ const STATUS_COLOR = {
   loading: "#9a948c",      // gris (neutre / en cours)
 };
 
-/* Statut par département (provisoire, en dur ; à brancher sur la base
- * ensuite). Départements absents de la table → stroke neutre, sans fill. */
-const DEPT_STATUS = {
-  "88": "georef_ready", // Vosges
-  "95": "georef_ready", // Val-d'Oise
-  "93": "georef_ready", // Seine-Saint-Denis
-  "01": "georef_ready", // Ain
-  "31": "georef_ready", // Haute-Garonne
-  "21": "georef_ready", // Côte-d'Or
-  "25": "georef_ready", // Doubs
-  "71": "georef_ready", // Saône-et-Loire
-  // Bretagne — JPEG → IIIF via worker (georéf solvable) → vert
-  "22": "georef",       // Côtes-d'Armor
-  "29": "georef",       // Finistère
-  "35": "georef",       // Ille-et-Vilaine
-  "56": "georef",       // Morbihan
+/* Niveau d'avancement par département — échelle N1 (rouge) → N5 (vert) de
+ * l'état des lieux national (voir ETAT_DES_LIEUX.md / CSV, 2026-07-20). */
+const NIVEAU_COLOR = {
+  N5: "#2e9e4f", // vert       — vectorisé disponible
+  N4: "#7cb342", // vert clair — géoréférencé / moissonnable FA+IIIF
+  N3: "#e0a800", // jaune      — open data téléchargeable
+  N2: "#e07b1a", // orange     — visualiseur AD uniquement
+  N1: "#c0392b", // rouge      — partiel / incertain
 };
-const DEPT_NEUTRAL = "#b8b2a8"; // stroke des départements sans statut
+const DEPT_NIVEAU = {
+  // N5 — vectorisé disponible
+  "22":"N5","29":"N5","35":"N5","56":"N5","84":"N5","85":"N5","92":"N5",
+  // N4 — géoréférencé et/ou moissonnable FranceArchives + IIIF
+  "01":"N4","16":"N4","79":"N4","82":"N4","88":"N4","93":"N4","95":"N4",
+  // N3 — open data téléchargeable
+  "25":"N3","31":"N3","71":"N3",
+  // N2 — visualiseur AD uniquement (75 hors périmètre stats, renseigné quand même)
+  "02":"N2","03":"N2","04":"N2","05":"N2","06":"N2","07":"N2","08":"N2","10":"N2","11":"N2",
+  "12":"N2","13":"N2","14":"N2","15":"N2","17":"N2","18":"N2","19":"N2","21":"N2","23":"N2",
+  "24":"N2","26":"N2","27":"N2","28":"N2","30":"N2","32":"N2","33":"N2","34":"N2","36":"N2",
+  "37":"N2","38":"N2","39":"N2","40":"N2","41":"N2","42":"N2","43":"N2","44":"N2","45":"N2",
+  "46":"N2","47":"N2","48":"N2","49":"N2","50":"N2","51":"N2","52":"N2","53":"N2","54":"N2",
+  "55":"N2","57":"N2","58":"N2","59":"N2","60":"N2","61":"N2","62":"N2","63":"N2","64":"N2",
+  "65":"N2","66":"N2","67":"N2","68":"N2","69":"N2","70":"N2","72":"N2","73":"N2","74":"N2",
+  "75":"N2","76":"N2","77":"N2","78":"N2","80":"N2","81":"N2","83":"N2","86":"N2","87":"N2",
+  "89":"N2","90":"N2","91":"N2","94":"N2",
+  // N1 — partiel / incertain
+  "09":"N1","2A":"N1","2B":"N1",
+};
+const DEPT_NEUTRAL = "#b8b2a8"; // stroke des départements hors métropole/inconnus
 
-// code département → couleur de statut, sinon neutre
+// code département → couleur de niveau, sinon neutre
 function deptColorExpr() {
   const expr = ["match", ["get", "code"]];
-  for (const [code, status] of Object.entries(DEPT_STATUS))
-    expr.push(code, STATUS_COLOR[status]);
+  for (const [code, niveau] of Object.entries(DEPT_NIVEAU))
+    expr.push(code, NIVEAU_COLOR[niveau]);
   expr.push(DEPT_NEUTRAL);
   return expr;
 }
-// fill seulement pour les départements à statut (même opacité que les communes)
+// fill seulement pour les départements à niveau connu (même opacité que les communes)
 function deptFillOpacityExpr() {
-  return ["case", ["in", ["get", "code"], ["literal", Object.keys(DEPT_STATUS)]], 0.12, 0];
+  return ["case", ["in", ["get", "code"], ["literal", Object.keys(DEPT_NIVEAU)]], 0.12, 0];
 }
 
 /* Source + couches : départements (au démarrage) puis commune sélectionnée */

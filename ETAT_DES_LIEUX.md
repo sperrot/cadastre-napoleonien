@@ -1,41 +1,3 @@
-# Cadastre napoléonien — annuaire cartographique
-
-Visualiseur web léger pour retrouver, par commune, les plans du **cadastre
-napoléonien** numérisés par les archives départementales (tableaux
-d'assemblage, sections, feuilles).
-
-> **État : V0.x — « annuaire cartographique ».**
-> Carte + recherche de commune + liens vers les plans d'archives.
-> Aucune image hébergée, aucun géoréférencement (paliers suivants).
-
-## Principe : le plus léger possible
-
-| Composant | Choix | 
-|-----------|-------|
-| Front | Statique (MapLibre GL JS, CDN) | 
-| Fond de carte | OSM raster (sans clé) |
-| Communes (recherche + contours) | [geo.api.gouv.fr](https://geo.api.gouv.fr) côté client | 
-| Liens d'archives | table `document` dans Supabase |
-| Images des plans | **restent chez les archives** (lien sortant) | 
-
-L'app n'héberge donc **aucune image** : elle indexe et cartographie des liens.
-
-
-## Arborescence
-
-```
-.
-├── web/
-│   ├── index.html          # page unique
-│   ├── style.css
-│   ├── app.js              # carte + recherche + lecture Supabase
-│   ├── config.example.js   # modèle de config (à copier)
-│   └── config.js           # config locale (ignorée par git)
-└── supabase/
-    ├── schema.sql          # tables commune + document, RLS lecture publique
-    └── seed.sql            # données de démo (à remplacer)
-```
-
 # État des lieux national — cadastre napoléonien par département
 
 Inventaire de l'avancement de la numérisation, du géoréférencement et de la
@@ -188,26 +150,10 @@ Paris est exclu du décompte des 95, mais ses plans anciens sont en ligne aux Ar
 - **Formats** : « JPG (visionneuse) » = images vues dans le viewer sans téléchargement structuré ; « JPG téléchargeable » = open data ; « ARK » = lien pérenne visionneuse ; « IIIF » = manifeste exploitable (Allmaps).
 - **Licence** : « À vérifier » = CGU du site AD non dépouillées lors de cette passe.
 
+## Méthode & limites
 
-
-## Utilisation
-
-- **Rechercher** une commune par son nom (autocomplete).
-- **Cliquer** sur la carte : sélectionne la commune sous le pointeur.
-- Le panneau liste les plans disponibles, groupés en *tableau d'assemblage →
-  sections → feuilles*, chaque entrée ouvrant le viewer de l'archive.
-
-## État des lieux national
-
-Inventaire par département (95, métropole hors Paris) de l'avancement
-numérisation / géoréférencement / vectorisation et de la mise à disposition :
-voir [`ETAT_DES_LIEUX.md`](ETAT_DES_LIEUX.md) (données :
-[`etat_des_lieux_departements.csv`](etat_des_lieux_departements.csv)).
-
-## Feuille de route
-
-- **V0.0** ✅ Annuaire cartographique (lecture).
-- **V0.3** ✅ Géoréférencement réel via [Allmaps](https://allmaps.org) (annotations
-  JSON, rendu déformé côté navigateur, sans serveur de tuiles) + sections au
-  zoom fort. Département Seine Saint Denis disponible (Rechercher Sevran,  Aulnay , Drancy, Villepinte ...)
-- **V1** Workflow de validation, couverture multi-départements, exports.
+1. **Repo (vague A)** : départements déjà travaillés ici — synthèse [`to_do/README.md`](to_do/README.md), seeds `harvest/seed_*.sql`, [`to_do/diagnostic_iiif_allmaps.md`](to_do/diagnostic_iiif_allmaps.md).
+2. **API data.gouv.fr (vague B)** : `GET https://www.data.gouv.fr/api/1/datasets/?q=cadastre+napoléonien&page_size=100` (+ variantes « atlas parcellaire », « cadastre ancien »…) — l'API REST s'applique bien, ~14 jeux nationaux dédupliqués (25, 31, 45, 84, 92 + Bretagne, Avignon, Brest, Suresnes).
+3. **FranceArchives (vague B)** : recherche `q=cadastre` + facette « Numérisations avec IIIF » et « Lieux de conservation ». La facette reflète le **IIIF déclaré côté FranceArchives** : Vosges et Doubs n'y figurent pas car leur IIIF provient de la chaîne du repo (manifestes AD / worker JPEG→IIIF sur l'open data), pas des notices FA — les comptes cités en commentaire sont un signal de volume, pas un inventaire des plans.
+4. **Recherche web (vague C)** : article officiel [« Cadastre et plans numérisés »](https://francearchives.gouv.fr/fr/article/26287472) (MAJ 2026-04-28) pour les liens AD + type de visualiseur déduit du motif d'URL ; recherches ciblées (Aude, 66, Corse, Vendée, Nîmes, 82, 64, Alsace, Oise, Ariège).
+5. **Limites** : lignes ⚠️ non testées une à une (lien mort possible, IIIF/licence à confirmer) ; les comptes FranceArchives incluent des matrices/états de sections, pas seulement des plans ; les initiatives communales (Nîmes, Brest, Toulouse UrbanHist, Avignon…) sont signalées dans les commentaires du département sans changer son niveau.

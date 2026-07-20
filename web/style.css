@@ -181,7 +181,8 @@ header .tagline { margin: 2px 0 0; font-size: .8rem; color: var(--muted); }
 .georef-btn:hover { background: #e3cdaf; }
 
 /* --- Légende (état du contour communal) --- */
-#legend {
+#legend,
+#legend-dept {
   list-style: none;
   margin: 12px 0 0;
   padding: 10px 12px;
@@ -191,7 +192,9 @@ header .tagline { margin: 2px 0 0; font-size: .8rem; color: var(--muted); }
   font-size: .78rem;
   color: var(--muted);
 }
-#legend li {
+#legend-dept { margin-top: 8px; }
+#legend li,
+#legend-dept li {
   display: flex;
   align-items: center;
   gap: 8px;
@@ -208,6 +211,12 @@ header .tagline { margin: 2px 0 0; font-size: .8rem; color: var(--muted); }
 .legend-dot[data-s="ready"]  { background: #e0a800; }
 .legend-dot[data-s="iiif"]   { background: #e07b1a; }
 .legend-dot[data-s="absent"] { background: #c0392b; }
+/* Avancement départemental — échelle N1 (rouge) → N5 (vert), cf. ETAT_DES_LIEUX.md */
+.legend-dot[data-n="N5"] { background: #2e9e4f; }
+.legend-dot[data-n="N4"] { background: #7cb342; }
+.legend-dot[data-n="N3"] { background: #e0a800; }
+.legend-dot[data-n="N2"] { background: #e07b1a; }
+.legend-dot[data-n="N1"] { background: #c0392b; }
 
 /* ================================================================== *
  * Onglet Documents (GED)
