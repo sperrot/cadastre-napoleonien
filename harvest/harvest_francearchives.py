@@ -222,11 +222,12 @@ def extract_leaf(g: Graph, subj: URIRef, manifest: str, commune_hint: str = None
     year = first(RICO.beginningDate)
     cote = first(RICO.identifier)
     service = first(RICO.hasOrHadManager) or first(RICO.hasOrHadHolder)
+    dept = dept_of_service(service)   # restreint la résolution INSEE au département
 
     # commune : selon la structure, soit dans le titre de la feuille
     # ("Aulnay-sous-Bois, 1782."), soit dans celui du parent ("Sevran").
     commune_name = commune_from_titles(title, commune_hint)
-    if not (commune_name and insee_of(commune_name)):
+    if not (commune_name and insee_of(commune_name, dept)):
         for s in g.objects(subj, RICO.hasOrHadSubject):
             if "/location/" in str(s):
                 loc = resolve_location(eid_of(str(s)))
@@ -252,7 +253,7 @@ def extract_leaf(g: Graph, subj: URIRef, manifest: str, commune_hint: str = None
         "annee": int(year) if year and year.isdigit() else None,
         "cote": cote,
         "commune": commune_name,
-        "insee": insee_of(commune_name) if commune_name else None,
+        "insee": insee_of(commune_name, dept) if commune_name else None,
         "facomponent": str(subj).replace(f"{BASE}/", f"{BASE}/fr/"),
         "iiif_manifest": manifest,
         "image_url": image,
@@ -326,7 +327,25 @@ COMMUNE_ALIAS = {
 }
 
 
-def insee_of(commune_name: str):
+# Département par service (institution) : restreint la résolution INSEE au bon
+# département. SANS filtre, geo.api renvoie l'homonyme le plus peuplé — ex.
+# « Chatenois » (Vosges 88) → Châtenois (Bas-Rhin 67). eid service -> dept.
+# À enrichir en parallèle de SERVICE_LICENCE quand un département est validé.
+SERVICE_DEPT = {
+    "34471": "95",   # Val-d'Oise
+    "33495": "14",   # Calvados
+    "34393": "93",   # Seine-Saint-Denis
+    "34309": "88",   # Vosges
+    "33359": "01",   # Ain
+}
+
+
+def dept_of_service(service: str):
+    """service/NNNN → code département (2 chiffres) ou None si inconnu."""
+    return SERVICE_DEPT.get(eid_of(service)) if service else None
+
+
+def insee_of(commune_name: str, dept: str = None):
     # normalise : « Aubervilliers (Seine-Saint-Denis, France) » → « Aubervilliers »,
     # « SEVRAN [commune] » → « SEVRAN », « Bobigny, Bondy, … » → « Bobigny »
     name = re.sub(r"\(.*?\)", "", commune_name or "")   # parenthèses (dept, pays)
@@ -337,16 +356,21 @@ def insee_of(commune_name: str):
         return None
     if name in COMMUNE_ALIAS:
         return COMMUNE_ALIAS[name]
-    if name in _insee_cache:
-        return _insee_cache[name]
+    # Clé de cache par (nom, dept) : deux « Chatenois » de départements
+    # différents ne doivent pas se télescoper dans le cache.
+    key = (name, dept)
+    if key in _insee_cache:
+        return _insee_cache[key]
     try:
-        r = session.get(GEO_API, params={"nom": name, "fields": "code",
-                                          "boost": "population", "limit": 1}, timeout=15)
+        params = {"nom": name, "fields": "code", "boost": "population", "limit": 1}
+        if dept:
+            params["codeDepartement"] = dept   # ← recherche restreinte au département
+        r = session.get(GEO_API, params=params, timeout=15)
         data = r.json()
         code = data[0]["code"] if data else None
     except Exception:
         code = None
-    _insee_cache[name] = code
+    _insee_cache[key] = code
     time.sleep(0.2)
     return code
 
