@@ -79,3 +79,11 @@ create policy "lecture publique document" on document for select using (true);
 grant usage on schema public to anon, authenticated;
 grant select on commune  to anon, authenticated;
 grant select on document to anon, authenticated;
+
+-- Écriture pour les scripts de moisson locaux (harvest/, clé service_role) :
+-- service_role contourne la RLS mais a quand même besoin des privilèges SQL.
+grant usage on schema public to service_role;
+grant all on all tables    in schema public to service_role;
+grant all on all sequences in schema public to service_role;
+alter default privileges in schema public grant all on tables    to service_role;
+alter default privileges in schema public grant all on sequences to service_role;

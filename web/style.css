@@ -180,6 +180,33 @@ header .tagline { margin: 2px 0 0; font-size: .8rem; color: var(--muted); }
 }
 .georef-btn:hover { background: #e3cdaf; }
 
+/* --- Sélecteur de fond de carte --- */
+#basemap-control {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 8px;
+  background: rgba(250, 247, 241, .95);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  font-size: .78rem;
+  color: var(--muted);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, .12);
+}
+#basemap-control select {
+  font: inherit;
+  color: inherit;
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 2px 4px;
+  max-width: 230px;
+}
+
 /* --- Légende (état du contour communal) --- */
 #legend,
 #legend-dept {

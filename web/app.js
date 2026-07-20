@@ -21,26 +21,96 @@ const sb =
       )
     : null;
 
+/* --- Fonds de carte (OSM + cartes historiques IGN Géoplateforme, WMTS) --- */
+const IGN_ATTRIB = "© IGN — Géoplateforme";
+function ignWmts(layer, format, tms) {
+  return (
+    "https://data.geopf.fr/wmts?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0" +
+    `&LAYER=${layer}&STYLE=normal&TILEMATRIXSET=${tms}` +
+    `&FORMAT=${encodeURIComponent(format)}&TILEMATRIX={z}&TILEROW={y}&TILECOL={x}`
+  );
+}
+const BASEMAPS = {
+  osm: {
+    label: "OpenStreetMap",
+    tiles: ["https://tile.openstreetmap.org/{z}/{x}/{y}.png"],
+    attribution: "© OpenStreetMap contributors",
+  },
+  etatmajor40: {
+    label: "État-major 1/40 000 (1820-1866)",
+    tiles: [ignWmts("GEOGRAPHICALGRIDSYSTEMS.ETATMAJOR40", "image/jpeg", "PM_6_15")],
+    attribution: IGN_ATTRIB,
+    minzoom: 6,
+    maxzoom: 15,
+  },
+  etatmajor10: {
+    label: "État-major environs de Paris (1818-1824)",
+    tiles: [ignWmts("GEOGRAPHICALGRIDSYSTEMS.ETATMAJOR10", "image/jpeg", "PM_6_16")],
+    attribution: IGN_ATTRIB,
+    minzoom: 6,
+    maxzoom: 16,
+  },
+  bdcarto_em3: {
+    label: "BD CARTO état-major N3",
+    tiles: [ignWmts("BDCARTO_ETAT-MAJOR.NIVEAU3", "image/png", "PM_6_16")],
+    attribution: IGN_ATTRIB,
+    minzoom: 6,
+    maxzoom: 16,
+  },
+  bdcarto_em4: {
+    label: "BD CARTO état-major N4",
+    tiles: [ignWmts("BDCARTO_ETAT-MAJOR.NIVEAU4", "image/png", "PM_6_16")],
+    attribution: IGN_ATTRIB,
+    minzoom: 6,
+    maxzoom: 16,
+  },
+};
+
 /* --- Carte --- */
+const baseStyle = { version: 8, sources: {}, layers: [] };
+for (const [id, bm] of Object.entries(BASEMAPS)) {
+  baseStyle.sources[id] = {
+    type: "raster",
+    tiles: bm.tiles,
+    tileSize: 256,
+    attribution: bm.attribution,
+    ...(bm.minzoom != null ? { minzoom: bm.minzoom } : {}),
+    ...(bm.maxzoom != null ? { maxzoom: bm.maxzoom } : {}),
+  };
+  baseStyle.layers.push({
+    id: `basemap-${id}`,
+    type: "raster",
+    source: id,
+    layout: { visibility: id === "osm" ? "visible" : "none" },
+  });
+}
 const map = new maplibregl.Map({
   container: "map",
-  style: {
-    version: 8,
-    sources: {
-      osm: {
-        type: "raster",
-        tiles: ["https://tile.openstreetmap.org/{z}/{x}/{y}.png"],
-        tileSize: 256,
-        attribution: "© OpenStreetMap contributors",
-      },
-    },
-    layers: [{ id: "osm", type: "raster", source: "osm" }],
-  },
+  style: baseStyle,
   center: [2.5, 46.6], // France métropolitaine
   zoom: 5,
   maxPitch: 0, // le plugin Allmaps (overlay) ne supporte pas le pitch
 });
 map.addControl(new maplibregl.NavigationControl(), "top-right");
+
+/* Sélecteur de fond de carte (peuplé depuis BASEMAPS) */
+const basemapSelect = document.getElementById("basemap-select");
+if (basemapSelect) {
+  for (const [id, bm] of Object.entries(BASEMAPS)) {
+    const opt = document.createElement("option");
+    opt.value = id;
+    opt.textContent = bm.label;
+    basemapSelect.appendChild(opt);
+  }
+  basemapSelect.addEventListener("change", () => {
+    for (const id of Object.keys(BASEMAPS))
+      map.setLayoutProperty(
+        `basemap-${id}`,
+        "visibility",
+        id === basemapSelect.value ? "visible" : "none"
+      );
+  });
+}
 
 /* ------------------------------------------------------------------ *
  * Codes couleur de statut — partagés par les contours communes ET
