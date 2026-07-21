@@ -478,6 +478,14 @@ button.ged-card:hover { border-color: var(--accent); transform: translateY(-2px)
 .ged-code { color: var(--muted); font-size: .76rem; font-weight: 400; }
 .ged-meta { margin: 0; color: var(--muted); font-size: .8rem; }
 
+/* Titres de card : bascule vers l'autre vue (carte ↔ GED) */
+.ged-to-map, .map-to-ged {
+  color: inherit;
+  text-decoration: none;
+  border-bottom: 1px dotted var(--line);
+}
+.ged-to-map:hover, .map-to-ged:hover { color: var(--accent); border-bottom-color: var(--accent); }
+
 .ged-link { color: var(--accent); text-decoration: none; font-weight: 600; font-size: .85rem; }
 .ged-link:hover { text-decoration: underline; }
 .ged-empty { color: var(--muted); font-size: .82rem; font-style: italic; }

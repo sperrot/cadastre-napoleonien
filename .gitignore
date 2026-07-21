@@ -26,3 +26,7 @@ download/
 # Cache de build Cloudflare Workers
 .wrangler/
 proxy/**/.wrangler/
+
+# Explorations hors projet (vectorisation BD Carto etat-major)
+19siecle.qgz
+harvest/wfs_vigne_etatmajor.py

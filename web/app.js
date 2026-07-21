@@ -29,11 +29,17 @@ const BASE_PATH = location.hostname.endsWith("github.io")
   if (p) history.replaceState(null, "", BASE_PATH + p.replace(/^\/+/, "") + location.hash);
 })();
 
+/* Deux vues symétriques pour une même commune :
+ *   /<region>/<dept>/<insee>        → carte
+ *   /card/<region>/<dept>/<insee>   → fiche GED  */
 function parseRoute() {
   const rest = location.pathname.slice(BASE_PATH.length).replace(/^\/+|\/+$/g, "");
   if (!rest) return null;
-  const [region, dept, insee] = rest.split("/");
-  return { region, dept, insee };
+  const seg = rest.split("/");
+  const vue = seg[0] === "card" ? "ged" : "carte";
+  if (vue === "ged") seg.shift();
+  const [region, dept, insee] = seg;
+  return { vue, region, dept, insee };
 }
 
 // insee → chemin public de la commune (null si le département est hors table)
@@ -43,15 +49,31 @@ function communePath(insee, deptCode) {
   return region ? `${BASE_PATH}${region}/${dept}/${insee}` : null;
 }
 
+// même commune, côté GED
+function cardPath(insee, deptCode) {
+  const p = communePath(insee, deptCode);
+  return p ? `${BASE_PATH}card/${p.slice(BASE_PATH.length)}` : null;
+}
+
 function updateCommuneUrl(c) {
   const path = communePath(c.code, c.codeDepartement);
   if (path && location.pathname !== path) history.replaceState(null, "", path);
 }
 
-// Au chargement : si l'URL désigne une commune, la sélectionner sur la carte
+// Au chargement : ouvre la vue désignée par l'URL (carte ou fiche GED)
 async function applyRoute() {
   const r = parseRoute();
   if (!r || !/^\w{5}$/.test(r.insee || "")) return;
+
+  if (r.vue === "ged") {
+    showView("docs");
+    // openDocs() charge docsStats ; on attend qu'il soit prêt avant d'ouvrir
+    await openDocs();
+    await openDept(r.dept || r.insee.slice(0, 2));
+    revealCard(r.insee);
+    return;
+  }
+
   try {
     const res = await fetch(`${GEO_API}/${r.insee}?fields=${COMMUNE_FIELDS}`);
     if (!res.ok) return;
@@ -430,8 +452,7 @@ function renderCommune(c, docs, loading) {
     </div>`;
   } else if (docs.length === 0) {
     html += `<div class="empty-state">
-      <strong>Aucun plan référencé pour cette commune.</strong><br>
-      La contribution participative (ajout de liens) arrive au palier V0.1.
+      <strong>Aucun plan référencé pour cette commune.</strong>
     </div>`;
   } else {
     html += sourceFooter(docs); // attribution en tête de fiche
@@ -516,19 +537,33 @@ async function hydrateGeoref(root, fallbackInsee) {
   }
 }
 
-/* Clic sur « Voir l'overlay » : navigation interne (pas de rechargement) */
+/* Navigation interne (sans rechargement) — deux sens :
+ *  · vers la carte : « Voir l'overlay » et titre d'une card GED
+ *  · vers la GED   : titre d'une fiche du panneau carte             */
 document.addEventListener("click", async (e) => {
-  const a = e.target.closest("a.georef-link[data-insee]");
-  if (!a) return;
-  e.preventDefault();
-  try {
-    const res = await fetch(`${GEO_API}/${a.dataset.insee}?fields=${COMMUNE_FIELDS}`);
-    if (!res.ok) return;
-    const c = await res.json();
-    showView("map");
-    selectCommune(c);
-  } catch (err) {
-    location.href = a.getAttribute("href"); // repli : navigation classique
+  const versCarte = e.target.closest("a.georef-link[data-insee], a.ged-to-map[data-map-insee]");
+  if (versCarte) {
+    e.preventDefault();
+    const insee = versCarte.dataset.insee || versCarte.dataset.mapInsee;
+    try {
+      const res = await fetch(`${GEO_API}/${insee}?fields=${COMMUNE_FIELDS}`);
+      if (!res.ok) return;
+      showView("map");
+      selectCommune(await res.json());
+    } catch (err) {
+      location.href = versCarte.getAttribute("href"); // repli
+    }
+    return;
+  }
+
+  const versGed = e.target.closest("a.map-to-ged[data-ged-insee]");
+  if (versGed) {
+    e.preventDefault();
+    const insee = versGed.dataset.gedInsee;
+    showView("docs");
+    await openDocs();
+    await openDept(insee.slice(0, 2));
+    revealCard(insee);
   }
 });
 
@@ -774,7 +809,6 @@ document.querySelectorAll("#view-toggle button").forEach((b) =>
  * ---------------------------------------------------------------------- */
 let docsStats = null;
 let docsData = new Map();
-let docsSearchList = []; // index plat pour l'autocomplétion (enrichi au fil des ouvertures de dept)
 const _deptNamesCache = new Map(); // code → nom
 
 async function loadDocsStats() {
@@ -910,16 +944,7 @@ async function loadDeptData(code) {
     for (const [insee, c] of db.communes) if (map.has(insee)) c.nom = map.get(insee);
   } catch (e) { /* garde l'insee */ }
   docsData.set(code, db);
-  addToDocsSearch(db); // enrichit l'autocomplétion avec ce dept
   return db;
-}
-
-function addToDocsSearch(db) {
-  for (const c of db.communes.values())
-    docsSearchList.push({
-      insee: c.insee, nom: c.nom, dept: db.code, deptNom: db.nom,
-      hay: `${c.nom} ${c.insee} ${db.nom}`.toLowerCase(),
-    });
 }
 
 /* --- Entrée dans l'onglet --- */
@@ -940,7 +965,6 @@ async function openDocs() {
 document.getElementById("docs-refresh-btn")?.addEventListener("click", async () => {
   docsStats = null;
   docsData = new Map();
-  docsSearchList = [];
   await openDocs();
 });
 
@@ -956,7 +980,6 @@ if (sb) {
       _rtTimer = setTimeout(() => {
         docsStats = null;
         docsData = new Map();
-        docsSearchList = [];
         if (!document.getElementById("docs-view").hidden) openDocs();
       }, 500);
     })
@@ -1237,7 +1260,7 @@ function renderDeptView() {
   document.getElementById("docs-sort").value = sort;
 
   const grid = docsGridEl();
-  grid.innerHTML = communesArr.map(communeCard).join("");
+  grid.innerHTML = communesArr.map((c) => communeCard(c, { vers: "carte" })).join("");
   hydrateGeoref(grid);
   hydrateThumbs(grid);
 
@@ -1288,7 +1311,7 @@ document.addEventListener("click", (e) => {
     : `${n} planche${n > 1 ? "s" : ""} · voir plus`;
 });
 
-function communeCard(c) {
+function communeCard(c, { vers = "carte" } = {}) {
   const assemblage = c.docs.find((d) => d.type === "tableau_assemblage");
   const sections = c.docs.filter((d) => d.type === "section");
   const manifest =
@@ -1333,10 +1356,22 @@ function communeCard(c) {
       </button>`;
   }
 
+  // Le titre bascule vers l'AUTRE vue : depuis la GED il mène à la carte,
+  // depuis le panneau carte il mène à la fiche GED. `vers` porte ce choix.
+  const lien =
+    vers === "ged"
+      ? { href: cardPath(c.insee), cls: "map-to-ged", attr: "data-ged-insee", t: "Voir dans la GED" }
+      : { href: communePath(c.insee), cls: "ged-to-map", attr: "data-map-insee", t: "Voir sur la carte" };
+  const titre = lien.href
+    ? `<a class="${lien.cls}" href="${escape(lien.href)}" ${lien.attr}="${escape(
+        c.insee
+      )}" title="${lien.t}">${escape(c.nom)}</a>`
+    : escape(c.nom);
+
   return `<div class="ged-card commune" id="ged-${escape(c.insee)}">
     ${thumbMarkup(manifest, imageUrl, "📄", (c.insee || "").slice(0, 2))}
     <div class="ged-card-body">
-      <h3>${escape(c.nom)} <span class="ged-code">${escape(c.insee)}</span></h3>
+      <h3>${titre} <span class="ged-code">${escape(c.insee)}</span></h3>
       ${actions}
     </div>
   </div>`;
@@ -1509,9 +1544,32 @@ let docsSearchTimer = null;
   });
 })();
 
-function runDocsSearch(q) {
-  const hits = docsSearchList.filter((x) => x.hay.includes(q)).slice(0, 8);
+/* Recherche GED — interroge geo.api puis ne garde que les communes dont le
+ * département est présent en base. (L'ancien index en mémoire ne servait plus
+ * à rien depuis le chargement paresseux : il restait vide tant qu'aucun
+ * département n'avait été ouvert.) */
+async function runDocsSearch(q) {
   const el = document.getElementById("docs-search-results");
+  let hits = [];
+  try {
+    const res = await fetch(
+      `${GEO_API}?nom=${encodeURIComponent(q)}&fields=nom,code,codeDepartement` +
+        `&boost=population&limit=25`
+    );
+    if (res.ok) {
+      hits = (await res.json())
+        .filter((c) => docsStats?.has(c.codeDepartement))
+        .slice(0, 8)
+        .map((c) => ({
+          insee: c.code,
+          nom: c.nom,
+          dept: c.codeDepartement,
+          deptNom: docsStats.get(c.codeDepartement)?.nom || c.codeDepartement,
+        }));
+    }
+  } catch (e) {
+    /* hors ligne → « aucun résultat » */
+  }
   if (!hits.length) {
     el.innerHTML = `<li class="no-hit">Aucun résultat</li>`;
     el.hidden = false;
@@ -1529,18 +1587,27 @@ function runDocsSearch(q) {
     .join("");
   el.hidden = false;
   el.querySelectorAll("li[data-insee]").forEach((li) =>
-    li.addEventListener("click", () => {
+    li.addEventListener("click", async () => {
       hideDocsResults();
       document.getElementById("docs-search-input").value = "";
-      openDept(li.dataset.dept);
-      const card = document.getElementById(`ged-${li.dataset.insee}`);
-      if (card) {
-        card.scrollIntoView({ behavior: "smooth", block: "center" });
-        card.classList.add("ged-highlight");
-        setTimeout(() => card.classList.remove("ged-highlight"), 1600);
-      }
+      // openDept est asynchrone (chargement du département à la demande) :
+      // sans l'attendre, la card n'existe pas encore au moment du défilement.
+      await openDept(li.dataset.dept);
+      revealCard(li.dataset.insee);
     })
   );
+}
+
+/* Défile jusqu'à une card, la met en évidence, et rend son URL partageable. */
+function revealCard(insee) {
+  const card = document.getElementById(`ged-${insee}`);
+  if (!card) return false;
+  card.scrollIntoView({ behavior: "smooth", block: "center" });
+  card.classList.add("ged-highlight");
+  setTimeout(() => card.classList.remove("ged-highlight"), 1600);
+  const p = cardPath(insee);
+  if (p && location.pathname !== p) history.replaceState(null, "", p);
+  return true;
 }
 
 function hideDocsResults() {
