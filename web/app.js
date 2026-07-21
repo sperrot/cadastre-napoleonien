@@ -119,6 +119,28 @@ const BASEMAPS = {
   },
 };
 
+/* --- Calques historiques superposables ------------------------------ *
+ * Mosaïques déjà géoréférencées publiées par les départements, servies en
+ * WMS et affichées PAR-DESSUS le fond courant (à la différence des fonds
+ * de BASEMAPS, qui s'excluent mutuellement).
+ * MapLibre substitue {bbox-epsg-3857} → le service doit accepter EPSG:3857
+ * et renvoyer du PNG transparent avec CORS (vérifié pour le Vaucluse).
+ * -------------------------------------------------------------------- */
+const OVERLAYS = {
+  napo84: {
+    label: "Cadastre napoléonien — Vaucluse (84)",
+    tiles: [
+      "https://imageries.datasud.fr/napo?SERVICE=WMS&VERSION=1.3.0&REQUEST=GetMap" +
+        "&LAYERS=napo84&CRS=EPSG:3857&BBOX={bbox-epsg-3857}" +
+        "&WIDTH=256&HEIGHT=256&FORMAT=image/png&TRANSPARENT=true&STYLES=",
+    ],
+    attribution:
+      '<a href="https://www.data.gouv.fr/datasets/cadastre-napoleonien-geo-reference-vaucluse-et-sections-cadastrales-associees-1-2" target="_blank" rel="noopener">© Département de Vaucluse — Licence Ouverte 2.0</a>',
+    opacity: 0.9,
+    bounds: [[4.63, 43.65], [5.80, 44.45]], // Vaucluse — cadrage à l'activation
+  },
+};
+
 /* --- Carte --- */
 const baseStyle = { version: 8, sources: {}, layers: [] };
 for (const [id, bm] of Object.entries(BASEMAPS)) {
@@ -135,6 +157,23 @@ for (const [id, bm] of Object.entries(BASEMAPS)) {
     type: "raster",
     source: id,
     layout: { visibility: id === "osm" ? "visible" : "none" },
+  });
+}
+// Les calques viennent après les fonds (donc au-dessus), mais avant les
+// couches départements/communes ajoutées au `load`.
+for (const [id, ov] of Object.entries(OVERLAYS)) {
+  baseStyle.sources[`ov-${id}`] = {
+    type: "raster",
+    tiles: ov.tiles,
+    tileSize: 256,
+    attribution: ov.attribution,
+  };
+  baseStyle.layers.push({
+    id: `overlay-${id}`,
+    type: "raster",
+    source: `ov-${id}`,
+    layout: { visibility: "none" },
+    paint: { "raster-opacity": ov.opacity ?? 1 },
   });
 }
 const map = new maplibregl.Map({
@@ -162,6 +201,45 @@ if (basemapSelect) {
         "visibility",
         id === basemapSelect.value ? "visible" : "none"
       );
+  });
+}
+
+/* Calques superposables : case à cocher + opacité (un bloc par overlay) */
+const overlayListEl = document.getElementById("overlay-list");
+if (overlayListEl) {
+  for (const [id, ov] of Object.entries(OVERLAYS)) {
+    const row = document.createElement("div");
+    row.className = "overlay-row";
+    row.innerHTML = `
+      <label><input type="checkbox" data-overlay="${id}"> ${escape(ov.label)}</label>
+      <input type="range" class="overlay-opacity" data-overlay="${id}"
+             min="0" max="100" value="${Math.round((ov.opacity ?? 1) * 100)}"
+             aria-label="Opacité du calque" disabled>`;
+    overlayListEl.appendChild(row);
+  }
+  // Le style peut ne pas être prêt si l'utilisateur coche très tôt : on
+  // diffère alors l'appel, sinon MapLibre lève « non-existing layer ».
+  const quandStylePret = (fn) =>
+    map.isStyleLoaded() ? fn() : map.once("load", fn);
+
+  overlayListEl.addEventListener("change", (e) => {
+    const cb = e.target.closest('input[type="checkbox"][data-overlay]');
+    if (!cb) return;
+    const id = cb.dataset.overlay;
+    quandStylePret(() =>
+      map.setLayoutProperty(`overlay-${id}`, "visibility", cb.checked ? "visible" : "none")
+    );
+    const slider = overlayListEl.querySelector(`.overlay-opacity[data-overlay="${id}"]`);
+    if (slider) slider.disabled = !cb.checked;
+    // premier affichage : cadrer sur l'emprise du calque
+    if (cb.checked && OVERLAYS[id].bounds) map.fitBounds(OVERLAYS[id].bounds, { padding: 30 });
+  });
+  overlayListEl.addEventListener("input", (e) => {
+    const sl = e.target.closest(".overlay-opacity[data-overlay]");
+    if (!sl) return;
+    quandStylePret(() =>
+      map.setPaintProperty(`overlay-${sl.dataset.overlay}`, "raster-opacity", +sl.value / 100)
+    );
   });
 }
 

@@ -54,9 +54,12 @@
     </aside>
 
     <main id="map">
-      <div id="basemap-control" title="Fond de carte">
-        <label for="basemap-select">Fond</label>
-        <select id="basemap-select" aria-label="Choix du fond de carte"></select>
+      <div id="basemap-control">
+        <div class="basemap-row">
+          <label for="basemap-select">Fond</label>
+          <select id="basemap-select" aria-label="Choix du fond de carte"></select>
+        </div>
+        <div id="overlay-list" aria-label="Calques historiques superposables"></div>
       </div>
     </main>
   </div>
@@ -95,6 +98,6 @@
 
   <!-- Copier config.example.js → config.js et renseigner Supabase -->
   <script src="config.js"></script>
-  <script src="app.js?v=20260721c"></script>
+  <script src="app.js?v=20260721d"></script>
 </body>
 </html>

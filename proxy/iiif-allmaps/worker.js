@@ -25,6 +25,7 @@ const ALLOWED = new Set([
   "kartenn.region-bretagne.fr",                // Bretagne — assemblage communal JPG
   "saone-et-loire71.fr",                       // Saône-et-Loire (71) — opendata JPEG (http)
   "download.doubs.fr",                         // Doubs (25) — opendata JPEG
+  "data.haute-garonne.fr",                     // Haute-Garonne (31) — opendata Opendatasoft (JPEG)
 ]);
 
 const BROWSER_HEADERS = {
@@ -239,12 +240,17 @@ export default {
       // C'est ce que consomme Allmaps pour géoréférencer un JPEG open data.
       if (/^https?:\/\//i.test(dataOrig)) {
         if (!hostAllowed(dataOrig)) return bad(400, "hôte non autorisé");
-        // tolère l'ancienne forme sans extension (manifestes générés avant)
-        const src = /\.jpe?g$/i.test(dataOrig) ? dataOrig : dataOrig + ".jpg";
         const selfBase = `${origin}/static-iiif/${enc}`;
+        // L'URL est prise telle quelle : certaines sources n'ont pas
+        // d'extension (API de fichiers Opendatasoft, ex. Haute-Garonne).
+        // `.jpg` n'est retenté qu'en repli, pour les manifestes générés
+        // avant que l'extension ne soit conservée dans l'URL du service.
+        const candidats = /\.jpe?g$/i.test(dataOrig)
+          ? [dataOrig]
+          : [dataOrig, dataOrig + ".jpg"];
 
         if (suffix === "/info.json" || suffix === "") {
-          const { w, h } = await fetchJpegDimensions(src);
+          const { w, h } = await fetchJpegDimensions(candidats[0]);
           return json({
             "@context": "http://iiif.io/api/image/2/context.json",
             "@id":      selfBase,
@@ -259,8 +265,12 @@ export default {
           });
         }
         // toute requête d'image → l'unique tuile, c'est le JPEG source
-        const rr = await fetch(src, { headers: BROWSER_HEADERS });
-        if (!rr.ok) return bad(502, "image source: " + rr.status);
+        let rr = null;
+        for (const c of candidats) {
+          rr = await fetch(c, { headers: BROWSER_HEADERS });
+          if (rr.ok) break;
+        }
+        if (!rr || !rr.ok) return bad(502, "image source: " + (rr ? rr.status : "?"));
         const hh = new Headers();
         hh.set("Content-Type", rr.headers.get("content-type") || "image/jpeg");
         Object.entries(CORS).forEach(([k, v]) => hh.set(k, v));
