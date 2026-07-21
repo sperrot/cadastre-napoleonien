@@ -127,8 +127,8 @@ async function fetchJpegDimensions(url) {
  *   w, h    : dimensions lues dans le JPEG
  */
 function buildStaticManifest(jpgUrl, origin, w, h) {
-  const base = jpgUrl.replace(/\.jpe?g$/i, "");           // sans extension
-  const enc  = encodeURIComponent(base);
+  // URL complète (extension comprise) : /static-iiif/ la re-fetch telle quelle.
+  const enc  = encodeURIComponent(jpgUrl);
   const serviceId  = `${origin}/static-iiif/${enc}`;
   const manifestId = `${origin}/static-manifest?u=${encodeURIComponent(jpgUrl)}`;
   const canvasId   = `${manifestId}/canvas/1`;
@@ -233,6 +233,41 @@ export default {
       const enc     = i < 0 ? rest : rest.slice(0, i);
       const suffix  = i < 0 ? "" : rest.slice(i);
       const dataOrig = decodeURIComponent(enc); // /mnt/lustre/ad21/num_ext/.../xxx.jpg
+
+      // ── A) JPEG nu accessible en HTTP(S) (Doubs, Saône-et-Loire, Bretagne…) ──
+      // Émulation IIIF Image API level 0 : une seule « tuile » = l'image entière.
+      // C'est ce que consomme Allmaps pour géoréférencer un JPEG open data.
+      if (/^https?:\/\//i.test(dataOrig)) {
+        if (!hostAllowed(dataOrig)) return bad(400, "hôte non autorisé");
+        // tolère l'ancienne forme sans extension (manifestes générés avant)
+        const src = /\.jpe?g$/i.test(dataOrig) ? dataOrig : dataOrig + ".jpg";
+        const selfBase = `${origin}/static-iiif/${enc}`;
+
+        if (suffix === "/info.json" || suffix === "") {
+          const { w, h } = await fetchJpegDimensions(src);
+          return json({
+            "@context": "http://iiif.io/api/image/2/context.json",
+            "@id":      selfBase,
+            "protocol": "http://iiif.io/api/image",
+            "width":    w,
+            "height":   h,
+            "profile":  [
+              "http://iiif.io/api/image/2/level0.json",
+              { "formats": ["jpg"], "qualities": ["default"] },
+            ],
+            "tiles": [{ "width": w, "height": h, "scaleFactors": [1] }],
+          });
+        }
+        // toute requête d'image → l'unique tuile, c'est le JPEG source
+        const rr = await fetch(src, { headers: BROWSER_HEADERS });
+        if (!rr.ok) return bad(502, "image source: " + rr.status);
+        const hh = new Headers();
+        hh.set("Content-Type", rr.headers.get("content-type") || "image/jpeg");
+        Object.entries(CORS).forEach(([k, v]) => hh.set(k, v));
+        return new Response(rr.body, { status: 200, headers: hh });
+      }
+
+      // ── B) AD21 Archinoë : chemin interne /mnt/lustre/… via genereImage ──
 
       // URL cache déterministe (même logique que seed_cotedor_iiif.py)
       const suffixName = `_${TARGET_PX}_${TARGET_PX}_0_0_0_0_img.jpg`;
