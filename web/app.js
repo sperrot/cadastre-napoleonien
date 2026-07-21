@@ -1039,6 +1039,7 @@ function renderDeptView() {
     communesArr.sort((a, b) => (a.nom || "").localeCompare(b.nom || "", "fr"));
 
   // Sidebar facettes + toolbar tri
+  document.getElementById("docs-layout")?.classList.remove("no-facets");
   document.getElementById("docs-facets").hidden = false;
   document.getElementById("docs-facets").innerHTML = renderFacets(baseDocs, filters);
   document.getElementById("docs-sortbar").hidden = false;
@@ -1077,8 +1078,26 @@ function hideDeptFacets() {
   const s = document.getElementById("docs-sortbar");
   if (f) f.hidden = true;
   if (s) s.hidden = true;
+  // sans sidebar → la grille prend toute la largeur (cf. .no-facets)
+  document.getElementById("docs-layout")?.classList.add("no-facets");
   deptFacetState = null;
 }
+
+/* Repli/dépli des planches d'une card communale — écouteur délégué unique
+ * (la grille est ré-rendue à chaque navigation/filtre, on ne peut pas
+ * attacher les handlers card par card). */
+document.addEventListener("click", (e) => {
+  const btn = e.target.closest(".ged-more");
+  if (!btn) return;
+  const list = btn.previousElementSibling; // .ged-sections
+  if (!list) return;
+  const open = list.classList.toggle("expanded");
+  btn.setAttribute("aria-expanded", String(open));
+  const n = list.children.length;
+  btn.textContent = open
+    ? "voir moins"
+    : `${n} planche${n > 1 ? "s" : ""} · voir plus`;
+});
 
 function communeCard(c) {
   const assemblage = c.docs.find((d) => d.type === "tableau_assemblage");
@@ -1102,22 +1121,31 @@ function communeCard(c) {
   } else {
     actions += `<span class="ged-empty">Pas de tableau d'assemblage</span>`;
   }
-  if (sections.length) {
-    const chips = sections
+  // Sections ET feuilles : repliées à une seule ligne, dépliables au clic.
+  // (Doubs et Saône-et-Loire n'ont que des `feuille` : sans ceci, leurs
+  // documents n'apparaissaient nulle part dans la carte communale.)
+  const planches = [...sections, ...c.docs.filter((d) => d.type === "feuille")];
+  if (planches.length) {
+    const chips = planches
       .map((s) => {
         const label =
-          (s.section_lettre ? `Sect. ${s.section_lettre}` : s.cote || "Section") +
-          (s.feuille_num ? ` f.${s.feuille_num}` : "");
+          (s.section_lettre ? `Sect. ${s.section_lettre}` : s.cote || null) ||
+          (s.feuille_num ? `Feuille ${s.feuille_num}` : "Planche");
+        const suffix = s.section_lettre && s.feuille_num ? ` f.${s.feuille_num}` : "";
         return `<a class="ged-chip" href="${escape(
           s.archive_url
-        )}" target="_blank" rel="noopener">${escape(label)} ↗</a>`;
+        )}" target="_blank" rel="noopener">${escape(label + suffix)} ↗</a>`;
       })
       .join("");
-    actions += `<div class="ged-sections">${chips}</div>`;
+    const n = planches.length;
+    actions += `<div class="ged-sections">${chips}</div>
+      <button class="ged-more" type="button" aria-expanded="false">
+        ${n} planche${n > 1 ? "s" : ""} · voir plus
+      </button>`;
   }
 
   return `<div class="ged-card commune" id="ged-${escape(c.insee)}">
-    ${thumbMarkup(manifest, imageUrl, "📄")}
+    ${thumbMarkup(manifest, imageUrl, "📄", (c.insee || "").slice(0, 2))}
     <div class="ged-card-body">
       <h3>${escape(c.nom)} <span class="ged-code">${escape(c.insee)}</span></h3>
       ${actions}
@@ -1130,14 +1158,29 @@ function communeCard(c) {
  * Rendu en 2 temps : placeholder à l'affichage, image injectée quand
  * elle est résolue puis chargée (pas de flash d'image cassée). Cache.
  * ------------------------------------------------------------------ */
-function thumbMarkup(manifest, imageUrl, emoji) {
+/* Vignette figée par département — dernier recours, pour les fonds qui n'ont
+ * ni JPEG open data ni manifeste IIIF exploitable. (Côte-d'Or : le cache
+ * d'images archives.cotedor.fr renvoie 404 → aucune source valable à figer
+ * aujourd'hui ; à renseigner quand la source sera rétablie.) */
+const DEPT_THUMB = {};
+
+/* Ordre de préférence : JPEG direct > manifeste IIIF > image figée > emoji.
+ * Le JPEG open data (25/71/95/93) passe avant le IIIF car les manifestes
+ * générés par le worker pointent vers une chaîne d'image non résolue ; le
+ * chemin IIIF ne sert donc plus qu'aux vrais serveurs IIIF (Vosges). */
+function thumbMarkup(manifest, imageUrl, emoji, dept) {
+  if (imageUrl)
+    return `<div class="ged-thumb"><img loading="lazy" decoding="async" src="${escape(
+      imageUrl
+    )}" alt=""></div>`;
   if (manifest)
     return `<div class="ged-thumb" data-manifest="${escape(
       manifest
     )}"><span class="ged-thumb-ph">${emoji}</span></div>`;
-  if (imageUrl)
+  const figee = dept && DEPT_THUMB[dept];
+  if (figee)
     return `<div class="ged-thumb"><img loading="lazy" src="${escape(
-      imageUrl
+      figee
     )}" alt=""></div>`;
   return `<div class="ged-thumb"><span class="ged-thumb-ph">${emoji}</span></div>`;
 }

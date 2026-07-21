@@ -343,6 +343,9 @@ header .tagline { margin: 2px 0 0; font-size: .8rem; color: var(--muted); }
   align-items: start;
 }
 #docs-layout > #docs-main { min-width: 0; }
+/* Sans sidebar (vues Régions / Départements), la grille occupe toute la
+   largeur — sinon l'unique enfant retombe dans la piste de 240 px. */
+#docs-layout.no-facets { grid-template-columns: 1fr; }
 #docs-facets[hidden] { display: none; }
 #docs-facets {
   background: var(--panel-bg);
@@ -467,7 +470,30 @@ button.ged-card:hover { border-color: var(--accent); transform: translateY(-2px)
 div.ged-card.ged-empty { opacity: .55; background: #f5f2ea; cursor: default; }
 div.ged-card.ged-empty:hover { transform: none; border-color: var(--line); }
 
-.ged-sections { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 2px; }
+/* Planches (sections + feuilles) : une seule ligne visible par défaut,
+   dépliable via le bouton .ged-more qui suit. */
+.ged-sections {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 2px;
+  max-height: 24px;
+  overflow: hidden;
+}
+.ged-sections.expanded { max-height: none; }
+.ged-more {
+  align-self: flex-start;
+  margin-top: 6px;
+  padding: 2px 8px;
+  font: inherit;
+  font-size: .74rem;
+  color: var(--accent);
+  background: transparent;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  cursor: pointer;
+}
+.ged-more:hover { border-color: var(--accent); }
 .ged-chip {
   font-size: .74rem;
   padding: 2px 8px;
