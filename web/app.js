@@ -720,6 +720,7 @@ async function loadDocsStats() {
         nom: _deptNamesCache.get(row.dept) || row.dept,
         ...row,
       });
+    await addGeorefCounts();
     return docsStats;
   }
   console.warn("Vue v_document_stats_dept indisponible, fallback agrégation côté client :", error?.message);
@@ -765,6 +766,35 @@ async function loadDocsStats() {
   return docsStats;
 }
 
+/* Nombre de tableaux d'assemblage réellement géoréférencés (colonne `georef`,
+ * alimentée par harvest/refresh_georef_status.py depuis l'API Allmaps).
+ * Une seule requête : les plans calés restent peu nombreux. */
+async function addGeorefCounts() {
+  for (const s of docsStats.values()) s.nb_georef = 0;
+  const { data, error } = await sb
+    .from("document")
+    .select("insee")
+    .eq("type", "tableau_assemblage")
+    .not("georef", "is", null)
+    .limit(10000);
+  if (error || !data) return;
+  for (const d of data) {
+    const s = docsStats.get((d.insee || "").slice(0, 2));
+    if (s) s.nb_georef++;
+  }
+}
+
+// « X documents · Y communes · Z % géoréférencé » (Z = part des tableaux
+// d'assemblage effectivement calés dans Allmaps)
+function deptMeta(s) {
+  const pct = s.nb_assemblages
+    ? Math.round((100 * (s.nb_georef || 0)) / s.nb_assemblages)
+    : 0;
+  return `${s.total.toLocaleString("fr")} document${s.total > 1 ? "s" : ""} · ` +
+         `${s.nb_communes} commune${s.nb_communes > 1 ? "s" : ""} · ` +
+         `${pct} % géoréférencé`;
+}
+
 async function loadDeptData(code) {
   if (docsData.has(code) && docsData.get(code)._loaded) return docsData.get(code);
   const PAGE = 1000;
@@ -773,7 +803,7 @@ async function loadDeptData(code) {
     const { data: page, error } = await sb
       .from("document")
       .select(
-        "insee,type,section_lettre,feuille_num,annee,cote,archive_url,iiif_manifest,image_url,licence_overlay_ok"
+        "insee,type,section_lettre,feuille_num,annee,cote,archive_url,iiif_manifest,image_url,licence_overlay_ok,georef"
       )
       .like("insee", `${code}%`)
       .order("insee")
@@ -932,7 +962,7 @@ function openRegion(regId) {
         <div class="ged-thumb"><span class="ged-thumb-ph">🗺️</span></div>
         <div class="ged-card-body">
           <h3>${escape(s.nom)} <span class="ged-code">${escape(code)}</span></h3>
-          <p class="ged-meta">${s.nb_communes} commune${s.nb_communes > 1 ? "s" : ""} · ${s.total.toLocaleString("fr")} documents</p>
+          <p class="ged-meta">${deptMeta(s)}</p>
         </div>
       </button>`;
     }
@@ -984,7 +1014,7 @@ function renderDeptCards() {
         <div class="ged-thumb"><span class="ged-thumb-ph">🗺️</span></div>
         <div class="ged-card-body">
           <h3>${escape(s.nom)} <span class="ged-code">${escape(s.code)}</span></h3>
-          <p class="ged-meta">${s.nb_communes} communes · ${s.total.toLocaleString("fr")} documents</p>
+          <p class="ged-meta">${deptMeta(s)}</p>
         </div>
       </button>`
     )
@@ -1014,7 +1044,7 @@ async function openDept(code) {
   // Filtres/tri par département : partager l'état via un objet léger.
   deptFacetState = {
     db,
-    filters: { type: null, decennie: null, iiif: null, overlay: null },
+    filters: { type: null, decennie: null, iiif: null, georef: null },
     sort: "type-asc",
   };
   renderDeptView();
@@ -1037,8 +1067,7 @@ function applyFilters(docs, f) {
       (!f.decennie ||
         (d.annee && Math.floor(d.annee / 10) * 10 === f.decennie)) &&
       (!f.iiif || (f.iiif === "yes" ? !!d.iiif_manifest : !d.iiif_manifest)) &&
-      (!f.overlay ||
-        (f.overlay === "yes" ? !!d.licence_overlay_ok : !d.licence_overlay_ok))
+      (!f.georef || (f.georef === "yes" ? !!d.georef : !d.georef))
   );
 }
 
@@ -1066,7 +1095,7 @@ function renderFacets(baseDocs, f) {
   }
   const decs = [...decennies.entries()].sort((a, b) => a[0] - b[0]);
   const withIiif = count((d) => d.iiif_manifest);
-  const overlayOk = count((d) => d.licence_overlay_ok);
+  const georefOk = count((d) => d.georef);
   const total = baseDocs.length;
 
   const grp = (title, key, values, active) =>
@@ -1090,9 +1119,9 @@ function renderFacets(baseDocs, f) {
     grp("IIIF disponible", "iiif",
       [{ v: "yes", l: "Oui", n: withIiif }, { v: "no", l: "Non", n: total - withIiif }].filter((x) => x.n),
       f.iiif) +
-    grp("Overlay géoréf. autorisé", "overlay",
-      [{ v: "yes", l: "Oui", n: overlayOk }, { v: "no", l: "Non", n: total - overlayOk }].filter((x) => x.n),
-      f.overlay)
+    grp("Géoréférencé", "georef",
+      [{ v: "yes", l: "Oui", n: georefOk }, { v: "no", l: "Non", n: total - georefOk }].filter((x) => x.n),
+      f.georef)
   );
 }
 
