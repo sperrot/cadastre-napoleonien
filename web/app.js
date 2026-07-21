@@ -363,6 +363,10 @@ map.on("load", () => {
     source: "commune",
     paint: { "line-color": "#8a5a2b", "line-width": 2 },
   });
+
+  // Panneau : liste des communes documentées de la vue courante
+  map.on("moveend", scheduleMapCards);
+  scheduleMapCards();
 });
 
 /* --- Sélection d'une commune (objet { nom, code, codeDepartement, centre, contour }) --- */
@@ -389,10 +393,13 @@ async function selectCommune(c) {
     map.flyTo({ center: c.centre.coordinates, zoom: 13 });
   }
 
-  renderCommune(c, null, true); // état "chargement"
+  // Le panneau liste les communes de la vue (cf. refreshMapCards) : on
+  // mémorise celle-ci pour qu'elle y soit sélectionnée dès le prochain rendu.
+  selectedInsee = c.code;
+  scheduleMapCards();
+
   const docs = await fetchDocuments(c.code);
   if (token !== selectionToken) return;
-  renderCommune(c, docs, false);
 
   // Statut de géoréférencement → couleur du contour (+ overlay Allmaps si calé)
   if (Array.isArray(docs)) {
@@ -402,6 +409,160 @@ async function selectCommune(c) {
     if (st.status === "georef" && st.annotationUrl) showOverlay(st.annotationUrl);
   } else {
     setCommuneColor(STATUS_COLOR.loading); // Supabase non connecté : neutre
+  }
+}
+
+/* ------------------------------------------------------------------ *
+ * Panneau carte — mêmes cards que la GED, pour les communes visibles
+ *
+ * Au-delà d'un seuil de zoom, on liste les communes documentées dont le
+ * centroïde tombe dans la vue (plafonnées), rendues par `communeCard()`
+ * — donc strictement au même format que la GED. Les flèches ◀️ ▶️ font
+ * défiler la sélection et recentrent la carte.
+ * ------------------------------------------------------------------ */
+const MAP_CARDS_ZOOM_MIN = 11;
+const MAP_CARDS_MAX = 12;
+let mapCards = [];         // communes affichées dans le panneau
+let selectedInsee = null;  // commune mise en avant
+let _mapCardsTimer = null;
+let _mapCardsToken = 0;
+const _communesByDept = new Map(); // dept → [{code, nom, centre}] (geo.api, mis en cache)
+
+async function communesOfDept(dept) {
+  if (_communesByDept.has(dept)) return _communesByDept.get(dept);
+  let list = [];
+  try {
+    const r = await fetch(
+      `https://geo.api.gouv.fr/communes?codeDepartement=${dept}&fields=nom,code,centre`
+    );
+    if (r.ok) list = await r.json();
+  } catch (e) {
+    /* hors ligne → département ignoré */
+  }
+  _communesByDept.set(dept, list);
+  return list;
+}
+
+// Départements réellement rendus à l'écran ET présents en base
+function visibleDepts() {
+  try {
+    const feats = map.queryRenderedFeatures({ layers: ["departements-fill"] });
+    return [...new Set(feats.map((f) => f.properties?.code).filter(Boolean))].filter(
+      (code) => docsStats?.has(code)
+    );
+  } catch (e) {
+    return [];
+  }
+}
+
+const scheduleMapCards = () => {
+  clearTimeout(_mapCardsTimer);
+  _mapCardsTimer = setTimeout(refreshMapCards, 300); // moveend est très bavard
+};
+
+async function refreshMapCards() {
+  const el = document.getElementById("commune-info");
+  if (!el || document.getElementById("layout").hidden) return;
+  const token = ++_mapCardsToken;
+
+  if (map.getZoom() < MAP_CARDS_ZOOM_MIN) {
+    mapCards = [];
+    el.className = "placeholder";
+    el.innerHTML = `<p>Zoomez pour afficher les communes documentées de la zone
+      (niveau ${MAP_CARDS_ZOOM_MIN} minimum).</p>`;
+    return;
+  }
+  if (!sb) {
+    el.className = "placeholder";
+    el.innerHTML = `<p>Base non connectée — renseignez Supabase dans <code>config.js</code>.</p>`;
+    return;
+  }
+  if (!docsStats) await loadDocsStats();
+  if (token !== _mapCardsToken) return;
+
+  const depts = visibleDepts();
+  const b = map.getBounds();
+  const trouvees = [];
+  for (const dept of depts) {
+    const [db, communes] = await Promise.all([loadDeptData(dept), communesOfDept(dept)]);
+    if (token !== _mapCardsToken) return;
+    for (const c of communes) {
+      const pt = c.centre?.coordinates;
+      if (!pt) continue;
+      if (pt[0] < b.getWest() || pt[0] > b.getEast() ||
+          pt[1] < b.getSouth() || pt[1] > b.getNorth()) continue;
+      const entry = db.communes.get(c.code);
+      if (!entry) continue; // commune sans document → pas de card
+      trouvees.push({ insee: c.code, nom: c.nom, centre: c.centre, docs: entry.docs });
+    }
+  }
+  trouvees.sort((x, y) => x.nom.localeCompare(y.nom, "fr"));
+
+  const total = trouvees.length;
+  mapCards = trouvees.slice(0, MAP_CARDS_MAX);
+  if (selectedInsee && !mapCards.some((c) => c.insee === selectedInsee)) {
+    const sel = trouvees.find((c) => c.insee === selectedInsee);
+    if (sel) mapCards = [sel, ...mapCards.slice(0, MAP_CARDS_MAX - 1)]; // garder la sélection visible
+  }
+  renderMapPanel(total);
+}
+
+function renderMapPanel(total = mapCards.length) {
+  const el = document.getElementById("commune-info");
+  if (!el) return;
+  if (!mapCards.length) {
+    el.className = "placeholder";
+    el.innerHTML = `<p>Aucune commune documentée dans la zone affichée.</p>`;
+    return;
+  }
+  el.classList.remove("placeholder");
+  let i = mapCards.findIndex((c) => c.insee === selectedInsee);
+  if (i < 0) i = 0;
+  selectedInsee = mapCards[i].insee;
+
+  const plafond =
+    total > mapCards.length
+      ? `<p class="map-cards-note">${total} communes dans la vue, ${mapCards.length} affichées.</p>`
+      : "";
+  // Attribution des services d'archives, dédoublonnée sur l'ensemble des cards
+  const attribution = sourceFooter(mapCards.flatMap((c) => c.docs));
+
+  el.innerHTML =
+    `<div class="map-cards-nav">
+      <button type="button" data-step="-1" aria-label="Commune précédente">◀️</button>
+      <span class="map-cards-pos">${i + 1} / ${mapCards.length}</span>
+      <button type="button" data-step="1" aria-label="Commune suivante">▶️</button>
+    </div>${plafond}${attribution}` +
+    mapCards
+      .map(
+        (c) =>
+          `<div class="map-card${c.insee === selectedInsee ? " selected" : ""}"
+                id="mapcard-${escape(c.insee)}">${communeCard(c, { vers: "ged" })}</div>`
+      )
+      .join("");
+
+  el.querySelectorAll(".map-cards-nav button[data-step]").forEach((b) =>
+    b.addEventListener("click", () => stepMapCard(+b.dataset.step))
+  );
+  hydrateGeoref(el);
+  hydrateThumbs(el);
+  document.getElementById(`mapcard-${selectedInsee}`)
+    ?.scrollIntoView({ block: "nearest" });
+}
+
+/* ◀️ ▶️ : change de commune et recentre la carte dessus */
+async function stepMapCard(step) {
+  if (!mapCards.length) return;
+  let i = mapCards.findIndex((c) => c.insee === selectedInsee);
+  if (i < 0) i = 0;
+  const suivant = mapCards[(i + step + mapCards.length) % mapCards.length];
+  selectedInsee = suivant.insee;
+  renderMapPanel();
+  try {
+    const r = await fetch(`${GEO_API}/${suivant.insee}?fields=${COMMUNE_FIELDS}`);
+    if (r.ok) selectCommune(await r.json()); // recentre + met l'URL à jour
+  } catch (e) {
+    /* réseau indisponible : la sélection reste, sans recentrage */
   }
 }
 
@@ -425,49 +586,6 @@ async function fetchDocuments(insee) {
 /* ------------------------------------------------------------------ *
  * Rendu de la fiche commune
  * ------------------------------------------------------------------ */
-const TYPE_LABEL = {
-  tableau_assemblage: "Tableau d'assemblage",
-  section: "Sections",
-  feuille: "Feuilles",
-};
-const TYPE_ORDER = ["tableau_assemblage", "section", "feuille"];
-
-function renderCommune(c, docs, loading) {
-  const el = document.getElementById("commune-info");
-  el.classList.remove("placeholder");
-
-  let html = `
-    <h2 class="commune-title">${escape(c.nom)}</h2>
-    <p class="commune-sub">INSEE ${escape(c.code)} · département ${escape(
-    c.codeDepartement || c.code.slice(0, 2)
-  )}</p>`;
-
-  if (loading) {
-    html += `<p class="empty-state">Recherche des plans disponibles…</p>`;
-  } else if (docs === null) {
-    html += `<div class="empty-state">
-      <strong>Base de liens non connectée.</strong><br>
-      Renseignez Supabase dans <code>config.js</code> pour afficher les plans,
-      ou ouvrez directement le portail d'archives du département.
-    </div>`;
-  } else if (docs.length === 0) {
-    html += `<div class="empty-state">
-      <strong>Aucun plan référencé pour cette commune.</strong>
-    </div>`;
-  } else {
-    html += sourceFooter(docs); // attribution en tête de fiche
-    for (const type of TYPE_ORDER) {
-      const group = docs.filter((d) => d.type === type);
-      if (!group.length) continue;
-      html += `<div class="doc-group"><h3>${TYPE_LABEL[type] || type}</h3>`;
-      for (const d of group) html += docItem(d);
-      html += `</div>`;
-    }
-  }
-  el.innerHTML = html;
-  if (!loading && Array.isArray(docs) && docs.length) hydrateGeoref(el, c.code);
-}
-
 /* ------------------------------------------------------------------ *
  * Géoréférencement via Allmaps (zéro infra : Allmaps stocke + rend)
  *
@@ -651,37 +769,6 @@ function sourceFooter(docs) {
   return `<p class="source-note">Source : ${items}</p>`;
 }
 
-function docItem(d) {
-  let label = "Plan";
-  if (d.type === "section")
-    label = d.section_lettre ? `Section ${d.section_lettre}` : (d.cote || "Section");
-  else if (d.type === "feuille")
-    label = d.section_lettre
-      ? `Section ${d.section_lettre} — feuille ${d.feuille_num ?? "?"}`
-      : (d.cote || "Feuille");
-  else if (d.type === "tableau_assemblage") label = "Tableau d'assemblage";
-
-  // cote en meta si elle ne sert pas déjà de libellé
-  const metaParts = [d.annee];
-  if (label !== d.cote) metaParts.push(d.cote);
-  const meta = metaParts.filter(Boolean).join(" · ");
-  let html = `<div class="doc-item">
-    <a href="${escape(d.archive_url)}" target="_blank" rel="noopener">${escape(
-    label
-  )} ↗</a>
-    ${meta ? `<span class="meta">${escape(meta)}</span>` : ""}
-  </div>`;
-
-  // Géoréférencement Allmaps : seulement sur l'assemblage, avec manifeste IIIF,
-  // et uniquement si la licence autorise l'overlay (règle CRPA). Le statut réel
-  // (déjà géoréférencé ou non) est résolu en asynchrone par hydrateGeoref().
-  if (d.type === "tableau_assemblage" && d.iiif_manifest && d.licence_overlay_ok) {
-    html += `<div class="georef" data-manifest="${escape(d.iiif_manifest)}">
-      <span class="georef-loading">Vérification du géoréférencement…</span>
-    </div>`;
-  }
-  return html;
-}
 
 /* ------------------------------------------------------------------ *
  * Recherche par nom (autocomplete sur geo.api.gouv.fr)
@@ -915,7 +1002,8 @@ async function loadDeptData(code) {
     const { data: page, error } = await sb
       .from("document")
       .select(
-        "insee,type,section_lettre,feuille_num,annee,cote,archive_url,iiif_manifest,image_url,licence_overlay_ok,georef"
+        "insee,type,section_lettre,feuille_num,annee,cote,archive_url,iiif_manifest," +
+          "image_url,licence_overlay_ok,georef,source,source_url"
       )
       .like("insee", `${code}%`)
       .order("insee")

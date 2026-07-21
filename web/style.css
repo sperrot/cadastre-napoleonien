@@ -478,6 +478,39 @@ button.ged-card:hover { border-color: var(--accent); transform: translateY(-2px)
 .ged-code { color: var(--muted); font-size: .76rem; font-weight: 400; }
 .ged-meta { margin: 0; color: var(--muted); font-size: .8rem; }
 
+/* Panneau carte : navigation entre les communes de la vue */
+.map-cards-nav {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  margin-bottom: 8px;
+  font-size: .82rem;
+  color: var(--muted);
+}
+.map-cards-nav button {
+  border: 1px solid var(--line);
+  background: var(--panel-bg);
+  border-radius: 6px;
+  padding: 1px 7px;
+  cursor: pointer;
+  font-size: .82rem;
+  line-height: 1.5;
+}
+.map-cards-nav button:hover { border-color: var(--accent); }
+.map-cards-pos { min-width: 54px; text-align: center; }
+.map-cards-note {
+  margin: 0 0 8px;
+  font-size: .75rem;
+  color: var(--muted);
+  font-style: italic;
+}
+.map-card { margin-bottom: 10px; }
+.map-card.selected .ged-card {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px rgba(138, 90, 43, .18);
+}
+
 /* Titres de card : bascule vers l'autre vue (carte ↔ GED) */
 .ged-to-map, .map-to-ged {
   color: inherit;
