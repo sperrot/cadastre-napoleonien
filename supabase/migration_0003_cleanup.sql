@@ -13,8 +13,15 @@
 -- 1) UNIQUE ---------------------------------------------------------
 -- Si des doublons résiduels bloquent la création, les lister d'abord :
 --   select archive_url, count(*) from document group by 1 having count(*) > 1;
-alter table document
-  add constraint document_archive_url_key unique (archive_url);
+-- Idempotent : PostgreSQL n'a pas de `add constraint if not exists`.
+do $$ begin
+  if not exists (
+    select 1 from pg_constraint where conname = 'document_archive_url_key'
+  ) then
+    alter table document
+      add constraint document_archive_url_key unique (archive_url);
+  end if;
+end $$;
 
 -- 2) Index ----------------------------------------------------------
 create index if not exists document_dept_idx      on document (left(insee, 2));
