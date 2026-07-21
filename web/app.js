@@ -12,6 +12,59 @@
 const GEO_API = "https://geo.api.gouv.fr/communes";
 const COMMUNE_FIELDS = "nom,code,codeDepartement,centre,contour";
 
+/* ------------------------------------------------------------------ *
+ * Routage /<region>/<departement>/<commune>  (ex. /bfc/25/25056)
+ *
+ * GitHub Pages ne sert que des fichiers statiques : une URL profonde
+ * tombe en 404. `404.html` la réécrit en `?p=/bfc/25/25056` et renvoie
+ * ici, où l'on restaure l'URL propre puis on applique la route.
+ * ------------------------------------------------------------------ */
+const BASE_PATH = location.hostname.endsWith("github.io")
+  ? "/" + (location.pathname.split("/").filter(Boolean)[0] || "") + "/"
+  : "/";
+
+// Restaure l'URL propre après le détour par 404.html
+(function restoreDeepLink() {
+  const p = new URLSearchParams(location.search).get("p");
+  if (p) history.replaceState(null, "", BASE_PATH + p.replace(/^\/+/, "") + location.hash);
+})();
+
+function parseRoute() {
+  const rest = location.pathname.slice(BASE_PATH.length).replace(/^\/+|\/+$/g, "");
+  if (!rest) return null;
+  const [region, dept, insee] = rest.split("/");
+  return { region, dept, insee };
+}
+
+// insee → chemin public de la commune (null si le département est hors table)
+function communePath(insee, deptCode) {
+  const dept = deptCode || String(insee || "").slice(0, 2);
+  const region = DEPT_TO_REGION[dept];
+  return region ? `${BASE_PATH}${region}/${dept}/${insee}` : null;
+}
+
+function updateCommuneUrl(c) {
+  const path = communePath(c.code, c.codeDepartement);
+  if (path && location.pathname !== path) history.replaceState(null, "", path);
+}
+
+// Au chargement : si l'URL désigne une commune, la sélectionner sur la carte
+async function applyRoute() {
+  const r = parseRoute();
+  if (!r || !/^\w{5}$/.test(r.insee || "")) return;
+  try {
+    const res = await fetch(`${GEO_API}/${r.insee}?fields=${COMMUNE_FIELDS}`);
+    if (!res.ok) return;
+    const c = await res.json();
+    if (c && c.code) {
+      showView("map");
+      selectCommune(c);
+    }
+  } catch (e) {
+    /* deep-link invalide → on reste sur la vue par défaut */
+  }
+}
+
 /* --- Supabase (optionnel en V0.0 : la carte marche sans) --- */
 const sb =
   window.CONFIG && window.CONFIG.SUPABASE_URL && window.CONFIG.SUPABASE_ANON_KEY
@@ -220,6 +273,7 @@ async function selectCommune(c) {
   hideResults();
   searchInput.value = c.nom;
   clearOverlay();
+  updateCommuneUrl(c); // URL partageable /<region>/<dept>/<insee>
 
   if (c.contour && map.getSource("commune")) {
     map.getSource("commune").setData({
@@ -302,6 +356,7 @@ function renderCommune(c, docs, loading) {
       La contribution participative (ajout de liens) arrive au palier V0.1.
     </div>`;
   } else {
+    html += sourceFooter(docs); // attribution en tête de fiche
     for (const type of TYPE_ORDER) {
       const group = docs.filter((d) => d.type === type);
       if (!group.length) continue;
@@ -309,10 +364,9 @@ function renderCommune(c, docs, loading) {
       for (const d of group) html += docItem(d);
       html += `</div>`;
     }
-    html += sourceFooter(docs);
   }
   el.innerHTML = html;
-  if (!loading && Array.isArray(docs) && docs.length) hydrateGeoref(el);
+  if (!loading && Array.isArray(docs) && docs.length) hydrateGeoref(el, c.code);
 }
 
 /* ------------------------------------------------------------------ *
@@ -356,21 +410,49 @@ async function resolveAnnotation(manifest) {
   return result;
 }
 
-async function hydrateGeoref(root) {
+async function hydrateGeoref(root, fallbackInsee) {
   for (const block of root.querySelectorAll(".georef[data-manifest]")) {
     const manifest = block.dataset.manifest;
     const annotationUrl = await resolveAnnotation(manifest);
     if (!block.isConnected) return; // commune changée pendant le fetch
-    block.innerHTML = annotationUrl
-      ? `<span class="georef-badge">✓ géoréférencé</span>
-         <a class="georef-link" href="${escape(
-           viewerLink(annotationUrl)
-         )}" target="_blank" rel="noopener">Voir l'overlay ↗</a>`
-      : `<a class="georef-btn" href="${escape(
-          editorLink(manifest)
-        )}" target="_blank" rel="noopener">Géoréférencer ce plan ↗</a>`;
+    if (!annotationUrl) {
+      block.innerHTML = `<a class="georef-btn" href="${escape(
+        editorLink(manifest)
+      )}" target="_blank" rel="noopener">Géoréférencer ce plan ↗</a>`;
+      continue;
+    }
+    // Plan calé : on renvoie vers NOTRE carte (l'overlay y est rendu par
+    // @allmaps/maplibre), avec repli sur le viewer Allmaps si la commune
+    // n'est pas résoluble en route locale.
+    const insee = block.dataset.insee || fallbackInsee;
+    const local = insee ? communePath(insee) : null;
+    block.innerHTML =
+      `<span class="georef-badge">✓ géoréférencé</span>` +
+      (local
+        ? `<a class="georef-link" href="${escape(local)}" data-insee="${escape(
+            insee
+          )}">Voir l'overlay</a>`
+        : `<a class="georef-link" href="${escape(
+            viewerLink(annotationUrl)
+          )}" target="_blank" rel="noopener">Voir l'overlay ↗</a>`);
   }
 }
+
+/* Clic sur « Voir l'overlay » : navigation interne (pas de rechargement) */
+document.addEventListener("click", async (e) => {
+  const a = e.target.closest("a.georef-link[data-insee]");
+  if (!a) return;
+  e.preventDefault();
+  try {
+    const res = await fetch(`${GEO_API}/${a.dataset.insee}?fields=${COMMUNE_FIELDS}`);
+    if (!res.ok) return;
+    const c = await res.json();
+    showView("map");
+    selectCommune(c);
+  } catch (err) {
+    location.href = a.getAttribute("href"); // repli : navigation classique
+  }
+});
 
 /* ------------------------------------------------------------------ *
  * Statut de géoréférencement par commune → couleur du contour
@@ -1117,7 +1199,7 @@ function communeCard(c) {
     if (assemblage.iiif_manifest && assemblage.licence_overlay_ok)
       actions += `<div class="georef" data-manifest="${escape(
         assemblage.iiif_manifest
-      )}"><span class="georef-loading">Vérification du géoréférencement…</span></div>`;
+      )}" data-insee="${escape(c.insee)}"><span class="georef-loading">Vérification du géoréférencement…</span></div>`;
   } else {
     actions += `<span class="ged-empty">Pas de tableau d'assemblage</span>`;
   }
@@ -1361,3 +1443,7 @@ function hideDocsResults() {
     el.innerHTML = "";
   }
 }
+
+/* --- Deep-link : applique /<region>/<dept>/<insee> au chargement ---------
+ * En fin de fichier : DEPT_TO_REGION et selectCommune sont alors définis. */
+applyRoute();

@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8" />
+  <title>Cadastre napoléonien — redirection</title>
+  <!--
+    GitHub Pages ne sert que des fichiers statiques : une URL profonde comme
+    /cadastre-napoleonien/bfc/25/25056 n'existe pas sur disque et tombe ici.
+    On la réécrit en /cadastre-napoleonien/?p=/bfc/25/25056 ; app.js restaure
+    ensuite l'URL propre (history.replaceState) et applique la route.
+  -->
+  <script>
+    (function () {
+      var l = location;
+      var seg = l.pathname.split("/").filter(Boolean);
+      var base = "/";
+      if (l.hostname.endsWith("github.io")) base = "/" + (seg.shift() || "") + "/";
+      l.replace(base + "?p=" + encodeURIComponent("/" + seg.join("/")) + l.search.replace(/^\?/, "&") + l.hash);
+    })();
+  </script>
+</head>
+<body>
+  <p>Redirection…</p>
+</body>
+</html>

@@ -535,9 +535,9 @@ div.ged-card.ged-empty:hover { transform: none; border-color: var(--line); }
 }
 
 .source-note {
-  margin-top: 16px;
-  padding-top: 10px;
-  border-top: 1px solid var(--line);
+  margin: 0 0 14px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--line);
   font-size: .75rem;
   color: var(--muted);
   line-height: 1.4;
