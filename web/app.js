@@ -161,6 +161,22 @@ const OVERLAYS = {
     opacity: 0.9,
     bounds: [[4.63, 43.65], [5.80, 44.45]], // Vaucluse — cadrage à l'activation
   },
+  // Nos propres plans calés dans Allmaps. Le serveur de tuiles ne lit qu'un
+  // seul `url` : on lui sert donc une AnnotationPage unique regroupant toutes
+  // nos cartes, régénérée par harvest/refresh_georef_status.py.
+  // Couverture volontairement clairsemée (état d'avancement, pas un bug).
+  allmaps: {
+    label: "Cadastre napoléonien — Géoréf en cours",
+    tiles: [
+      "https://allmaps.xyz/{z}/{x}/{y}.png?url=" +
+        encodeURIComponent(
+          "https://sperrot.github.io/cadastre-napoleonien/annotations/collection.json"
+        ),
+    ],
+    attribution:
+      '<a href="https://allmaps.org" target="_blank" rel="noopener">Géoréférencement Allmaps</a>',
+    opacity: 0.85,
+  },
 };
 
 /* --- Carte --- */
@@ -983,15 +999,23 @@ async function addGeorefCounts() {
   }
 }
 
-// « X documents · Y communes · Z % géoréférencé » (Z = part des tableaux
-// d'assemblage effectivement calés dans Allmaps)
+/* Fonds livrés déjà géoréférencés par le producteur : le ratio Allmaps n'a
+ * pas de sens pour eux (92 = feuilles « _cale », 93 = dalles calées), on
+ * affiche 100 %. Idem au niveau région pour la Bretagne, dont la Région
+ * publie les emprises vectorisées. */
+const DEPT_GEOREF_SOURCE = new Set(["92", "93"]);
+const REGION_GEOREF_SOURCE = new Set(["bre"]);
+
+// « X documents · Y communes · Z % géoréférencé »
 function deptMeta(s) {
+  const base =
+    `${s.total.toLocaleString("fr")} document${s.total > 1 ? "s" : ""} · ` +
+    `${s.nb_communes} commune${s.nb_communes > 1 ? "s" : ""} · `;
+  if (DEPT_GEOREF_SOURCE.has(s.code)) return base + `100 % géoréférencé (à la source)`;
   const pct = s.nb_assemblages
     ? Math.round((100 * (s.nb_georef || 0)) / s.nb_assemblages)
     : 0;
-  return `${s.total.toLocaleString("fr")} document${s.total > 1 ? "s" : ""} · ` +
-         `${s.nb_communes} commune${s.nb_communes > 1 ? "s" : ""} · ` +
-         `${pct} % géoréférencé`;
+  return base + `${pct} % géoréférencé`;
 }
 
 async function loadDeptData(code) {
@@ -1116,10 +1140,15 @@ function renderRegionCards() {
   const cards = Object.entries(REGIONS).map(([id, r]) => {
     const s = stats.get(id) || { nbDocs: 0, nbDepts: 0 };
     const empty = s.nbDepts === 0;
-    const meta = empty
+    // Bretagne : aucun document en base, mais les emprises sont publiées
+    // vectorisées par la Région → on l'affiche comme calée à la source.
+    const meta = REGION_GEOREF_SOURCE.has(id)
+      ? `${r.depts.length} départements · vectorisé à la source — 100 % géoréférencé`
+      : empty
       ? `<span class="ged-muted">${r.depts.length} départements · données à venir</span>`
       : `${s.nbDepts} / ${r.depts.length} départements · ${s.nbDocs.toLocaleString("fr")} documents`;
-    return `<button class="ged-card region${empty ? " ged-empty" : ""}" data-region="${id}">
+    const grise = empty && !REGION_GEOREF_SOURCE.has(id);
+    return `<button class="ged-card region${grise ? " ged-empty" : ""}" data-region="${id}">
       <div class="ged-thumb"><span class="ged-thumb-ph">🗺️</span></div>
       <div class="ged-card-body">
         <h3>${escape(r.nom)}</h3>

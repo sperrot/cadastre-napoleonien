@@ -70,24 +70,50 @@ def allmaps_id(manifest_url: str) -> str:
 
 
 def is_georeferenced(manifest_url: str):
-    """→ URL d'annotation si le plan est calé dans Allmaps, sinon None."""
+    """→ (URL d'annotation, items) si le plan est calé dans Allmaps, sinon (None, []).
+
+    Les `items` sont conservés pour construire la collection d'annotations
+    servie au calque « Géoréf en cours » (cf. write_collection).
+    """
     url = ANNOT + allmaps_id(manifest_url)
     req = urllib.request.Request(url, headers={'User-Agent': 'mapping-cadastre-napoleonien'})
     for essai in range(3):
         try:
             with urllib.request.urlopen(req, timeout=20) as r:
                 data = json.loads(r.read())
-                return url if (data.get('items') or []) else None
+                items = data.get('items') or []
+                return (url, items) if items else (None, [])
         except urllib.error.HTTPError as e:
             if e.code == 404:
-                return None            # jamais géoréférencé
+                return None, []        # jamais géoréférencé
             if e.code in (429, 502, 503):
                 time.sleep(1.5 * (essai + 1))
                 continue
-            return None
+            return None, []
         except Exception:
             time.sleep(1.0 * (essai + 1))
-    return None
+    return None, []
+
+
+def write_collection(tous_items):
+    """Écrit web/annotations/collection.json — une AnnotationPage unique.
+
+    Le serveur de tuiles Allmaps (`allmaps.xyz/{z}/{x}/{y}.png?url=…`) ne lit
+    qu'**un seul** paramètre `url` : passer plusieurs annotations ne fonctionne
+    pas (vérifié). Pour obtenir une couche couvrant toute la collection, il
+    faut donc lui fournir une AnnotationPage qui regroupe tous les `items`.
+    """
+    dossier = os.path.join(HERE, '..', 'web', 'annotations')
+    os.makedirs(dossier, exist_ok=True)
+    chemin = os.path.join(dossier, 'collection.json')
+    page = {
+        "@context": "http://www.w3.org/ns/anno.jsonld",
+        "type": "AnnotationPage",
+        "items": tous_items,
+    }
+    with open(chemin, 'w', encoding='utf-8') as f:
+        json.dump(page, f, ensure_ascii=False)
+    print(f'collection : {len(tous_items)} carte(s) -> {os.path.normpath(chemin)}')
 
 
 def main():
@@ -118,9 +144,17 @@ def main():
     print(f'interrogation Allmaps ({WORKERS} en parallele)...')
     t0 = time.time()
     with ThreadPoolExecutor(max_workers=WORKERS) as ex:
-        annots = list(ex.map(lambda r: is_georeferenced(r['iiif_manifest']), rows))
+        resultats = list(ex.map(lambda r: is_georeferenced(r['iiif_manifest']), rows))
+    annots = [a for a, _ in resultats]
     cales = sum(1 for a in annots if a)
     print(f'  termine en {time.time()-t0:.0f}s : {cales} plan(s) cale(s) sur {len(rows)}')
+
+    # Collection d'annotations pour le calque « Géoréf en cours »
+    tous_items = [it for a, items in resultats if a for it in items]
+    if args.dry_run:
+        print(f'collection : {len(tous_items)} carte(s) (non ecrite, --dry-run)')
+    else:
+        write_collection(tous_items)
 
     # Diff : n'écrire que ce qui change
     now = time.strftime('%Y-%m-%dT%H:%M:%SZ', time.gmtime())
