@@ -5,7 +5,7 @@ vectorisation du cadastre napoléonien (tableaux d'assemblage + feuilles de
 section) et de sa mise à disposition, pour les **95 départements de métropole
 hors Paris** (96 dont 2A/2B, moins le 75).
 
-**Date de l'inventaire : 2026-07-20** · Fichier de données : [`etat_des_lieux_departements.csv`](etat_des_lieux_departements.csv)
+**Date de l'inventaire : 2026-07-20** · dernière moisson : 2026-07-22 · dernière moisson : 2026-07-22 · Fichier de données : [`etat_des_lieux_departements.csv`](etat_des_lieux_departements.csv)
 
 ## Échelle d'avancement
 
@@ -24,16 +24,16 @@ Cas mixtes classés au niveau le plus haut atteint, précisé en commentaire
 | Indicateur | Nombre | Part |
 |---|---|---|
 | N5 — Vectorisé — contours SHP/GPKG disponibles | 7 / 95 | 7 % |
-| N4 — Géoréférencé disponible et/ou moissonnable FranceArchives + IIIF | 7 / 95 | 7 % |
+| N4 — Géoréférencé disponible et/ou moissonnable FranceArchives + IIIF | 8 / 95 | 8 % |
 | N3 — Numérisé + téléchargeable en open data (JPG/CSV) | 3 / 95 | 3 % |
-| N2 — Numérisé, visualiseur AD uniquement | 75 / 95 | 79 % |
+| N2 — Numérisé, visualiseur AD uniquement | 74 / 95 | 78 % |
 | N1 — Partiel / incertain / non identifié clairement | 3 / 95 | 3 % |
 | N0 — Rien d'identifié en ligne | 0 / 95 | 0 % |
-| **Géoréférencé ou vectorisé disponible (≥ N4)** | **14 / 95** | **15 %** |
-| **Diffusion exploitable hors visualiseur (≥ N3)** | **17 / 95** | **18 %** |
-| IIIF disponible ou générable identifié | 14 / 95 | 15 % |
-| Licence ouverte (LO/ODbL/équiv.) sur au moins une source | 13 / 95 | 14 % |
-| Lignes vérifiées en réel (✅) | 18 / 95 | 19 % |
+| **Géoréférencé ou vectorisé disponible (≥ N4)** | **15 / 95** | **16 %** |
+| **Diffusion exploitable hors visualiseur (≥ N3)** | **18 / 95** | **19 %** |
+| IIIF disponible ou générable identifié | 15 / 95 | 16 % |
+| Licence ouverte (LO/ODbL/équiv.) sur au moins une source | 15 / 95 | 16 % |
+| Lignes vérifiées en réel (✅) | 20 / 95 | 21 % |
 
 Familles de visualiseurs AD identifiées (candidates aux pipelines du repo) : **Ligeo** 24 · **Mnesys** 16 · **Arkothèque** 13 · **Archinoë** 6 · **Bach** 5 · **THOT** 3 · **Pleade** 1.
 
@@ -42,7 +42,7 @@ Familles de visualiseurs AD identifiées (candidates aux pipelines du repo) : **
 | N° | Département | Source (lien) | Formats dispo | État | Licence | Commentaire |
 |---|---|---|---|---|---|---|
 | 01 | Ain | [FranceArchives + AD (Ligeo)](https://www.archives.ain.fr/n/archives-cadastrales/n:397) | ARK, IIIF | N4 ✅ | Réutilisation OK (CGU AD01) | Cadastre complet 463 communes (findingaid FA) ; manifeste IIIF direct dans Allmaps confirmé ; **moissonné : 9 173 documents sur 391 communes actuelles** (2026-07-22) |
-| 02 | Aisne | [AD (Ligeo)](https://archives.aisne.fr/archive/recherche/cadastres/n:12) | JPG (visionneuse) | N2 ⚠️ | À vérifier | Cadastre en ligne ; IIIF probable (famille Ligeo) à tester |
+| 02 | Aisne | [AD (Ligeo)](https://archives.aisne.fr/archive/recherche/cadastres/n:12) | IIIF | N4 ✅ | Licence Ouverte (Etalab 2.0) | Moissonné intégralement : **4 427 documents sur 628 communes** (2026-07-22). Manifeste IIIF par planche, Image API 3.0 **tuilée** ; inventaire HTML sous Anubis, arks collectés au navigateur. Le fonds mêle 3 P et E-Dépôt (1 G) ; lacunaire sur l'arrondissement de Château-Thierry |
 | 03 | Allier | [AD (Arkothèque)](https://archives.allier.fr/archives-en-ligne/cartes-plans-documents-figures/cadastre-napoleonien) | JPG (visionneuse) | N2 ⚠️ | À vérifier |  |
 | 04 | Alpes-de-Haute-Provence | [AD (portail)](https://www.archives04.fr/s/15/cadastre/) | JPG (visionneuse) | N2 ⚠️ | À vérifier |  |
 | 05 | Hautes-Alpes | [AD (Ligeo)](https://archives.hautes-alpes.fr/archive/resultats/cadastrenumerise/n:199?type=cadastrenumerise) | JPG (visionneuse) | N2 ⚠️ | À vérifier | ~1 800 docs cadastre numérisés référencés FranceArchives |

@@ -1,6 +1,6 @@
 code,departement,niveau,verifie,source_type,source_url,formats,licence,licence_cat,commentaire
 01,Ain,N4,oui,FranceArchives + AD (Ligeo),https://www.archives.ain.fr/n/archives-cadastrales/n:397,"ARK, IIIF",Réutilisation OK (CGU AD01),cgu,Cadastre complet 463 communes (findingaid FA) ; manifeste IIIF direct dans Allmaps confirmé ; moissonné : 9 173 documents sur 391 communes actuelles (2026-07-22)
-02,Aisne,N2,non,AD (Ligeo),https://archives.aisne.fr/archive/recherche/cadastres/n:12,JPG (visionneuse),À vérifier,inconnue,Cadastre en ligne ; IIIF probable (famille Ligeo) à tester
+02,Aisne,N4,oui,AD (Ligeo),https://archives.aisne.fr/archive/recherche/cadastres/n:12,IIIF,Licence Ouverte (Etalab 2.0),ouverte,Moissonné intégralement : 4 427 documents sur 628 communes (2026-07-22) ; manifeste IIIF par planche, Image API 3.0 tuilée ; fonds 3 P + E-Dépôt, lacunaire sur Château-Thierry
 03,Allier,N2,non,AD (Arkothèque),https://archives.allier.fr/archives-en-ligne/cartes-plans-documents-figures/cadastre-napoleonien,JPG (visionneuse),À vérifier,inconnue,
 04,Alpes-de-Haute-Provence,N2,non,AD (portail),https://www.archives04.fr/s/15/cadastre/,JPG (visionneuse),À vérifier,inconnue,
 05,Hautes-Alpes,N2,non,AD (Ligeo),https://archives.hautes-alpes.fr/archive/resultats/cadastrenumerise/n:199?type=cadastrenumerise,JPG (visionneuse),À vérifier,inconnue,~1 800 docs cadastre numérisés référencés FranceArchives
@@ -14,7 +14,7 @@ code,departement,niveau,verifie,source_type,source_url,formats,licence,licence_c
 13,Bouches-du-Rhône,N2,non,AD (Ligeo),https://www.archives13.fr/archive/recherche/cadastre/n:36,JPG (visionneuse),À vérifier,inconnue,
 14,Calvados,N2,oui,FranceArchives + AD (Mnesys),https://archives.calvados.fr/search/form/dfc4e27b-4f7e-431e-b413-655e793be3b7,ARK (sans IIIF),Réutilisation OK (CGU AD14),cgu,Moissonnable FA mais pas de manifeste IIIF (visionneuse ARK) ; harvester repo à adapter
 15,Cantal,N2,non,AD (portail),https://archives.cantal.fr/rechercher/cadastre-et-archives-foncieres,JPG (visionneuse),À vérifier,inconnue,
-16,Charente,N4,non,FranceArchives + AD (Ligeo),https://lasource.archives.lacharente.fr/archive/resultats/cadastre/n:125?type=cadastre,IIIF,À vérifier,inconnue,Numérisation intégrale confirmée (portail La Source testé) ; ≈11 000 docs cadastre en IIIF via FranceArchives → candidat prioritaire de moisson
+16,Charente,N4,oui,AD La Source (Ligeo),https://lasource.archives.lacharente.fr/archive/fonds/FRAD016-IR-3P_Plans/,IIIF,Licence Ouverte (Etalab 2.0),ouverte,Fonds 3 P moissonné intégralement : 6 727 documents sur 332 communes actuelles (413 communes d'Ancien Régime) ; manifeste IIIF par planche validé dans Allmaps (2026-07-22)
 17,Charente-Maritime,N2,non,AD (Archinoë),http://www.archinoe.net/v2/ad17/cadastre.html,JPG (visionneuse),À vérifier,inconnue,Pipeline Archinoë→IIIF du repo (AD21) applicable
 18,Cher,N2,non,AD (Arkothèque),https://www.archives18.fr/archives-numerisees/plans-du-cadastre,JPG (visionneuse),À vérifier,inconnue,
 19,Corrèze,N2,non,AD (Archinoë),http://www.archinoe.fr/cg19/cadastre.php,JPG (visionneuse),À vérifier,inconnue,≈4 600 docs numérisés référencés FranceArchives ; pipeline Archinoë applicable

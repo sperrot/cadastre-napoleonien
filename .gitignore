@@ -14,6 +14,8 @@ Thumbs.db
 harvest/.cache/
 # Fichiers COG INSEE téléchargés par build_alias_insee.py (14 Mo, régénérables)
 harvest/_cog/
+# Cache des manifestes IIIF par departement (regenerable, ~18 Mo pour l'Aisne)
+harvest/_manifestes_*.json
 
 # Secrets locaux (clé service_role Supabase, etc.)
 .env

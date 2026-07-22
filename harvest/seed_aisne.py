@@ -54,6 +54,7 @@ SOURCE = "Archives départementales de l'Aisne"
 LICENCE = 'Licence Ouverte (Etalab 2.0)'
 OVERLAY_OK = True
 GEO_API = 'https://geo.api.gouv.fr/communes'
+ANNEE_MAX = 1860        # borne haute du cadastre napoleonien
 UA = ('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 '
       '(KHTML, like Gecko) Chrome/124.0 Safari/537.36')
 
@@ -127,7 +128,11 @@ def parse_label(doc):
     parts = [p.strip() for p in re.split(r'[•·]', lab) if p.strip()]
     ident = titre = None
     annee = None
-    if parts and re.match(r'^\d?\s*[A-Z]\s*\d+', parts[0]):
+    # Structure constante : « IDENT • Commune : Titre • Date ». L'identifiant
+    # est donc le 1er segment dès qu'il n'est pas le « Commune : Titre ». Ne pas
+    # le reconnaître au motif « 3P… » : le fonds E-Dépôt (archives communales
+    # déposées, sous-série 1 G) cote « E_Dépôt_0418_1G1_02 » — 694 planches.
+    if len(parts) >= 2 and ':' not in parts[0]:
         ident = parts[0]
         parts = parts[1:]
     for p in list(parts):
@@ -148,19 +153,19 @@ def parse_label(doc):
 
 
 def parse_ident(ident):
-    """« 3P0001_01 » → ('3 P 1', 1). Le 1er nombre est le dossier de la commune,
-    le second la planche. Renvoie (None, None) si le motif n'est pas reconnu :
-    on préfère une cote vide à une cote inventée."""
+    """« 3P0001_02 » → ('3P0001_02', 2) ; « E_Dépôt_0418_1G1_02 » → (idem, 2).
+
+    La cote stockée est l'identifiant TEL QUE L'AD L'ÉCRIT, pas une cote
+    reconstruite : rien dans le manifeste ne dit que « 3P0001_02 » se note
+    « 3 P 1/2 ». Seul le suffixe « _NN » — le rang de planche — est extrait,
+    pour l'ordre d'affichage. Trois familles cohabitent dans ce fonds :
+    3P0001_02, 3P0749 bis_02, E_Dépôt_0418_1G1_02.
+    """
     if not ident:
         return None, None
-    m = re.match(r'^(\d?\s*P)\s*(\d+)([A-Za-z]?)[_/-](\d+)$',
-                 ident.replace(' ', ''), re.I)
-    if not m:
-        m2 = re.match(r'^3P(\d+)([A-Za-z]?)$', ident.replace(' ', ''), re.I)
-        if m2:
-            return f'3 P {int(m2.group(1))}{m2.group(2).upper()}', None
-        return None, None
-    return f'3 P {int(m.group(2))}{m.group(3).upper()}', int(m.group(4))
+    cote = norm(ident)
+    m = re.search(r'_(\d{1,3})$', cote)
+    return cote, (int(m.group(1)) if m else None)
 
 
 def classify(titre):
@@ -208,10 +213,28 @@ ALIAS, ALIAS_NORM = load_alias()
 _cache_insee = {}
 
 
+DEPT_NOM = 'Aisne'
+
+
 def nettoie_nom(nom):
-    """« Abbécourt (Aisne, France) » → « Abbécourt »."""
+    """Champ « Commune ou lieu-dit » → nom de la commune ACTUELLE.
+
+    Trois formes dans ce fonds, dénombrées sur les 4 443 manifestes :
+        « Abbécourt (Aisne, France) »                        4 167 → Abbécourt
+        « Agnicourt (Agnicourt-et-Séchelles, Aisne, France) »  255 → le nom
+              ACTUEL est celui de la parenthèse, pas la tête de champ
+        « Beaulne-et-Chivy » (sans parenthèse)                  21 → tel quel
+
+    Jeter la parenthèse comme le faisait la 1re version laissait le nom de 1825
+    pour 255 planches : 34 communes échouaient alors sur geo.api.
+    """
     n = norm(nom).rstrip('.').strip()
-    n = re.sub(r'\s*\(.*?\)\s*$', '', n)
+    m = re.match(r'^(.*?)\s*\((.*)\)\s*$', n)
+    if m:
+        dedans = [p.strip() for p in m.group(2).split(',') if p.strip()]
+        # retire les niveaux administratifs pour ne garder qu'une commune
+        dedans = [p for p in dedans if p.lower() not in ('france', DEPT_NOM.lower())]
+        n = dedans[0] if dedans else m.group(1).strip()
     if '/' in n:                      # « ancien / actuel »
         n = n.split('/')[-1].strip()
     return n
@@ -232,21 +255,27 @@ def insee_of(nom):
         return ALIAS_NORM[cle(n)]
     if n in _cache_insee:
         return _cache_insee[n]
-    code = None
-    try:
-        p = urllib.parse.urlencode({'nom': n, 'fields': 'code', 'boost': 'population',
-                                    'limit': 1, 'codeDepartement': DEPT})
-        req = urllib.request.Request(f'{GEO_API}?{p}',
-                                     headers={'User-Agent': 'mapping-cadastre-napoleonien'})
-        with urllib.request.urlopen(req, timeout=20) as r:
-            d = json.loads(r.read())
-        if d:
-            code = d[0]['code']
-    except Exception as e:
-        sys.stderr.write(f'  geo.api KO pour « {n} » : {e}\n')
-    _cache_insee[n] = code
-    time.sleep(0.15)
-    return code
+    p = urllib.parse.urlencode({'nom': n, 'fields': 'code', 'boost': 'population',
+                                'limit': 1, 'codeDepartement': DEPT})
+    req = urllib.request.Request(f'{GEO_API}?{p}',
+                                 headers={'User-Agent': 'mapping-cadastre-napoleonien'})
+    # Une panne réseau ne doit PAS se confondre avec une commune inconnue : sans
+    # réessai, un « Remote end closed connection » transitoire mettait None en
+    # cache et faisait disparaître les planches de la commune. On ne mémorise
+    # que les réponses effectivement obtenues.
+    for essai in range(4):
+        try:
+            with urllib.request.urlopen(req, timeout=20) as r:
+                d = json.loads(r.read())
+            code = d[0]['code'] if d else None
+            _cache_insee[n] = code
+            time.sleep(0.15)
+            return code
+        except Exception as e:
+            sys.stderr.write(f'  geo.api essai {essai + 1}/4 pour « {n} » : {e}\n')
+            time.sleep(1.5 * (essai + 1))
+    sys.stderr.write(f'  geo.api INJOIGNABLE pour « {n} » — non mémorisé\n')
+    return None
 
 
 # -------------------------------------------------------------------- SQL ---
@@ -305,11 +334,19 @@ def main():
 
     # 1) extraction
     planches, sans_commune, sans_image, sans_cote = [], [], 0, 0
+    hors_periode = []
     for a in arks:
         d = docs.get(a)
         if not d:
             continue
         ident, titre, annee = parse_label(d)
+        # Le fonds mêle le cadastre napoléonien et quelques planches du cadastre
+        # RÉNOVÉ déposées en E-Dépôt (Armentières-sur-Ourcq, 1929). Mesuré :
+        # 10 planches ≥ 1900 sur 4 443. Les non datées sont conservées — la
+        # recherche du portail borne déjà la collection au cadastre napoléonien.
+        if annee is not None and annee > ANNEE_MAX:
+            hors_periode.append((ident, annee))
+            continue
         cote, plan = parse_ident(ident)
         if not cote:
             sans_cote += 1
@@ -323,6 +360,10 @@ def main():
         planches.append({'ark': a, 'cote': cote, 'plan': plan, 'titre': titre,
                          'annee': annee, 'commune': commune, 'image': img})
     print(f'planches : {len(planches)} | sans cote {sans_cote} | sans image {sans_image}')
+    if hors_periode:
+        print(f'  {len(hors_periode)} planche(s) posterieure(s) a {ANNEE_MAX}, ecartees :')
+        for i, y in hors_periode[:12]:
+            print(f'    {i} ({y})')
 
     # 2) INSEE — une résolution par commune distincte
     noms = sorted({p['commune'] for p in planches if p['commune']})
