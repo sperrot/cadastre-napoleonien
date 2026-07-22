@@ -45,10 +45,21 @@ auraient corrompu les données en silence :
 | Le fonds mêle napoléonien et **cadastre rénové** (10 planches de 1929) | du cadastre de 1929 présenté comme napoléonien |
 | geo.api mettait ses **échecs réseau en cache** | 7 planches disparues sur une coupure passagère |
 
-D'où `seed_ligeo.py --check` (à venir) : il lit ~50 manifestes et imprime le
-profil du fonds — formes du champ commune, familles d'identifiants, min/max des
-années, CORS avec et sans `Origin`, tuilage de l'`info.json`, taux de résolution
-INSEE. Une page à lire au lieu de plusieurs heures d'archéologie.
+D'où **`seed_ligeo.py --check`** : il lit 60 manifestes et imprime le profil du
+fonds en sept points — formes du champ commune, **familles d'identifiants**
+(une famille inattendue = un fonds entier ignoré), plage et histogramme des
+années avec alerte hors période, CORS avec **et sans** `Origin`, tuilage de
+l'`info.json`, types de planche, taux de résolution INSEE. Une page à lire au
+lieu de plusieurs heures d'archéologie.
+
+Les trois défauts silencieux de l'Aisne y apparaissent en clair : la ligne
+« formes : {2 éléments, **3 éléments**} », une famille d'identifiants
+`E_Dépôt_…` à côté de `#P#_#`, et « ⚠ hors [1780–1860] : [1929] ».
+
+**Le générique est validé contre l'Aisne** : rejoué sur les 4 443 arks, il
+produit **4 432 lignes identiques à `seed_aisne.py` sur les 15 colonnes**, sans
+la moindre ligne ajoutée ni perdue. Si un jour le diff n'est plus vide, c'est le
+générique qui a tort.
 
 ## Pièges déjà établis, valables pour tous les portails Ligeo
 
@@ -80,8 +91,16 @@ INSEE. Une page à lire au lieu de plusieurs heures d'archéologie.
 
 ```bash
 python harvest/build_alias_insee.py --dept NN     # alias COG, une fois
-python harvest/seed_ligeo.py --dept NN --check    # profil du fonds
+python harvest/seed_ligeo.py --dept NN --check    # profil du fonds — À LIRE
 python harvest/seed_ligeo.py --dept NN            # seed complet
 python harvest/load_seed_to_supabase.py harvest/seed_NN.sql
 python harvest/refresh_georef_status.py           # sans --dept : régénère le calque
 ```
+
+Portail partagé : `--dept 79,86`. La résolution INSEE essaie les deux
+départements et **refuse** un libellé qui existe dans les deux avec des communes
+différentes, au lieu d'en élire une — le garde-fou anti-homonymes reste actif.
+
+Le script s'arrête avec un message explicite tant que la configuration est
+incomplète (`colonne « naan » vide pour le 53`) ou que le TSV manque
+(`aucun arks.tsv pour le 16`). Rien ne s'exécute à moitié.
