@@ -29,6 +29,7 @@ import os
 import time
 import re
 import argparse
+import collections
 import requests
 from rdflib import Graph, URIRef, Namespace
 from rdflib.namespace import RDF, RDFS
@@ -36,6 +37,7 @@ from rdflib.namespace import RDF, RDFS
 BASE = "https://francearchives.gouv.fr"
 RICO = Namespace("https://www.ica.org/standards/RiC/ontology#")
 DCTERMS = Namespace("http://purl.org/dc/terms/")
+GEO1 = Namespace("http://www.w3.org/2003/01/geo/wgs84_pos#")
 
 HEADERS = {
     # FranceArchives sert une page de défi JS aux UA non-navigateur :
@@ -160,7 +162,8 @@ def period_overlaps(begin, end) -> bool:
 # ----------------------------------------------------------------------
 # Descente récursive : on collecte les feuilles (avec manifeste IIIF)
 # ----------------------------------------------------------------------
-def walk(etype: str, eid: str, leaves: list, seen: set, parent_title: str = None):
+def walk(etype: str, eid: str, leaves: list, seen: set, parent_title: str = None,
+         commune: str = None, commune_loc: str = None, depth: int = 0):
     if eid in seen:
         return
     seen.add(eid)
@@ -175,13 +178,23 @@ def walk(etype: str, eid: str, leaves: list, seen: set, parent_title: str = None
     children = list(g.objects(subj, RICO.includesOrIncluded))
     manifest = leaf_manifest(g, subj)
 
+    # ---- Niveau 1 = la commune : on retient son titre ET son lieu indexé ----
+    # Le parent IMMÉDIAT d'une feuille n'est pas toujours la commune : dans
+    # l'Ain l'arbre est commune → « Plans Napoléoniens » → feuilles, et se fier
+    # au parent immédiat fait passer « Plans Napoléoniens » pour un nom de
+    # commune. On propage donc la branche communale jusqu'aux feuilles.
+    if depth == 1:
+        commune = title or commune
+        commune_loc = commune_location(g, subj) or commune_loc
+
     # ---- Feuille (notice avec manifeste IIIF) ----
     if manifest and not children:
         if begin is not None and not (YEAR_MIN <= begin <= YEAR_MAX):
             sys.stderr.write(f"  (hors période {begin}) {parent_title or ''} — {title}\n")
             return
         # begin None ([s.d.]) : on garde, car la BRANCHE a déjà été validée napoléonienne
-        leaves.append(extract_leaf(g, subj, manifest, commune_hint=parent_title))
+        leaves.append(extract_leaf(g, subj, manifest, commune_hint=parent_title,
+                                   commune_branche=commune, commune_loc=commune_loc))
         sys.stderr.write(f"  feuille : {parent_title or '?'} — {title} ({eid})\n")
         return
 
@@ -193,7 +206,8 @@ def walk(etype: str, eid: str, leaves: list, seen: set, parent_title: str = None
         sys.stderr.write(f"  ✂ branche écartée ({begin}-{end}) : {title}\n")
         return
     for child in children:
-        walk("facomponent", eid_of(str(child)), leaves, seen, parent_title=title)
+        walk("facomponent", eid_of(str(child)), leaves, seen, parent_title=title,
+             commune=commune, commune_loc=commune_loc, depth=depth + 1)
 
 
 def leaf_manifest(g: Graph, subj: URIRef):
@@ -212,7 +226,8 @@ def leaf_manifest(g: Graph, subj: URIRef):
     return None
 
 
-def extract_leaf(g: Graph, subj: URIRef, manifest: str, commune_hint: str = None) -> dict:
+def extract_leaf(g: Graph, subj: URIRef, manifest: str, commune_hint: str = None,
+                 commune_branche: str = None, commune_loc: str = None) -> dict:
     def first(pred):
         for o in g.objects(subj, pred):
             return str(o)
@@ -224,16 +239,21 @@ def extract_leaf(g: Graph, subj: URIRef, manifest: str, commune_hint: str = None
     service = first(RICO.hasOrHadManager) or first(RICO.hasOrHadHolder)
     dept = dept_of_service(service)   # restreint la résolution INSEE au département
 
-    # commune : selon la structure, soit dans le titre de la feuille
-    # ("Aulnay-sous-Bois, 1782."), soit dans celui du parent ("Sevran").
+    # Résolution de la commune, du plus fiable au plus indirect :
+    #   1. titre de la feuille ("Aulnay-sous-Bois, 1782.") ou du parent ("Sevran")
+    #   2. titre de la branche communale (niveau 1 de l'instrument de recherche)
+    #   3. coordonnées du lieu indexé sur cette branche → commune ACTUELLE
+    #      (rattrape les communes fusionnées : Amareins → Francheleins)
     commune_name = commune_from_titles(title, commune_hint)
-    if not (commune_name and insee_of(commune_name, dept)):
-        for s in g.objects(subj, RICO.hasOrHadSubject):
-            if "/location/" in str(s):
-                loc = resolve_location(eid_of(str(s)))
-                if loc:
-                    commune_name = loc
-                break
+    insee = insee_of(commune_name, dept) if commune_name else None
+    if not insee and commune_branche:
+        insee = insee_of(commune_branche, dept)
+        if insee:
+            commune_name = commune_branche
+    if not insee and commune_loc:
+        insee, nom_actuel = insee_of_location(commune_loc)
+        if insee:
+            commune_name = commune_branche or nom_actuel
 
     # image (dao) : source d'une instantiation, hors vignette.
     # Motifs rencontrés : daoloc (SSD), daogrp (Val-d'Oise) → on accepte les deux.
@@ -253,7 +273,7 @@ def extract_leaf(g: Graph, subj: URIRef, manifest: str, commune_hint: str = None
         "annee": int(year) if year and year.isdigit() else None,
         "cote": cote,
         "commune": commune_name,
-        "insee": insee_of(commune_name, dept) if commune_name else None,
+        "insee": insee,          # résolu ci-dessus (titre → branche → lieu)
         "facomponent": str(subj).replace(f"{BASE}/", f"{BASE}/fr/"),
         "iiif_manifest": manifest,
         "image_url": image,
@@ -319,12 +339,74 @@ def resolve_location(loc_id: str):
     return label
 
 
-# Communes que geo.api ne resout pas par leur libelle (noms historiques /
-# limites du moteur flou). Libelle normalise -> code INSEE. A enrichir.
-COMMUNE_ALIAS = {
-    "Montreuil-sous-Bois": "93048",   # commune actuelle "Montreuil"
-    "Pierrefitte-sur-Seine": "93059",
-}
+# Lieux qui ne sont PAS des communes : « Ain (France ; département) », régions,
+# cantons… Les retenir comme nom de commune est ce qui avait envoyé 5 905
+# notices de l'Ain sur Ainhoa (64014) : geo.api résout « Ain » en flou.
+LOC_NON_COMMUNE = re.compile(
+    r";\s*(d[ée]partement|r[ée]gion|pays|canton|arrondissement|province)\s*\)", re.I)
+
+
+def commune_location(g: Graph, subj: URIRef):
+    """Identifiant du lieu COMMUNAL indexé sur une branche, sinon None."""
+    for s in g.objects(subj, RICO.hasOrHadSubject):
+        if "/location/" not in str(s):
+            continue
+        loc_id = eid_of(str(s))
+        label = resolve_location(loc_id)
+        if label and not LOC_NON_COMMUNE.search(label):
+            return loc_id
+    return None
+
+
+def insee_of_location(loc_id: str):
+    """Lieu FranceArchives → (INSEE de la commune ACTUELLE, son nom).
+
+    Passe par les coordonnées, pas par le nom : c'est ce qui rattrape les
+    communes disparues, dont le libellé n'existe plus dans geo.api
+    (Amareins 46.08097/4.78352 → 01165 Francheleins).
+    """
+    key = ("loc", loc_id)
+    if key in _insee_cache:
+        return _insee_cache[key]
+    res = (None, None)
+    g = fetch_graph("location", loc_id)
+    if g is not None:
+        s = URIRef(f"{BASE}/location/{loc_id}")
+        lat, lon = first_str(g, s, GEO1.lat), first_str(g, s, GEO1.long)
+        if lat and lon:
+            try:
+                r = session.get(GEO_API, timeout=15,
+                                params={"lat": lat, "lon": lon, "fields": "code,nom"})
+                d = r.json()
+                if d:
+                    res = (d[0]["code"], d[0]["nom"])
+            except Exception:
+                pass
+            time.sleep(0.2)
+    _insee_cache[key] = res
+    return res
+
+
+# Communes que ni geo.api (libellé) ni les coordonnées FranceArchives ne
+# résolvent : communes disparues avant l'indexation FA, variantes d'orthographe
+# des AD (« Saint-Martin-du-Fresne » pour Saint-Martin-du-Frêne). Table par
+# département, tenue dans communes_alias.json (source : COG INSEE).
+def load_alias():
+    chemin = os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                          "communes_alias.json")
+    try:
+        with open(chemin, encoding="utf-8") as fh:
+            import json
+            data = json.load(fh)
+    except Exception as e:
+        sys.stderr.write(f"⚠ communes_alias.json illisible ({e}) — alias ignorés\n")
+        return {}
+    return {(d, nom): code
+            for d, table in data.items() if not d.startswith("_")
+            for nom, code in table.items()}
+
+
+COMMUNE_ALIAS = load_alias()
 
 
 # Département par service (institution) : restreint la résolution INSEE au bon
@@ -345,6 +427,16 @@ def dept_of_service(service: str):
     return SERVICE_DEPT.get(eid_of(service)) if service else None
 
 
+# Libellés qui ne peuvent pas être un nom de commune : titres de rubrique de
+# l'instrument de recherche. Les interroger coûte un aller-retour geo.api par
+# titre distinct — sur l'Ain, quelques milliers de « Section B dite "du Tiret" ».
+# « Plan » n'est filtré que suivi d'une espace, pour épargner Plan-d'Orgon,
+# Le Plan-de-la-Tour…
+PAS_UNE_COMMUNE = re.compile(
+    r"^(sections?|feuilles?|tableaux?|matrices?|registres?|listes?|folios?|cases\s|"
+    r"renvois|proc[èe]s|limites|[ée]tats?|atlas|cadastres?|plans?\s)", re.I)
+
+
 def insee_of(commune_name: str, dept: str = None):
     # normalise : « Aubervilliers (Seine-Saint-Denis, France) » → « Aubervilliers »,
     # « SEVRAN [commune] » → « SEVRAN », « Bobigny, Bondy, … » → « Bobigny »
@@ -354,8 +446,10 @@ def insee_of(commune_name: str, dept: str = None):
     name = name.strip(" . ")
     if not name:
         return None
-    if name in COMMUNE_ALIAS:
-        return COMMUNE_ALIAS[name]
+    if (dept, name) in COMMUNE_ALIAS:
+        return COMMUNE_ALIAS[(dept, name)]
+    if PAS_UNE_COMMUNE.match(name):        # titre de rubrique : pas de requête
+        return None
     # Clé de cache par (nom, dept) : deux « Chatenois » de départements
     # différents ne doivent pas se télescoper dans le cache.
     key = (name, dept)
@@ -427,6 +521,32 @@ def sql_escape(v):
     return "'" + str(v).replace("'", "''") + "'"
 
 
+def controle_dept(leaves, attendu: str):
+    """Garde-fou : refuse d'écrire si les INSEE ne tombent pas dans le département.
+
+    C'est le contrôle qui manquait quand seed_ain.sql a été produit : 5 905 des
+    6 229 notices portaient un INSEE du 64 (geo.api résolvant « Ain », le lieu
+    DÉPARTEMENTAL indexé par FranceArchives, en « Ainhoa »). Personne ne l'a vu
+    avant le chargement en base.
+    """
+    codes = [l["insee"] for l in leaves if l["insee"]]
+    if not codes:
+        raise SystemExit("✖ aucune notice résolue — rien à écrire.")
+    par_dept = collections.Counter(c[:2] for c in codes)
+    hors = len(codes) - par_dept.get(attendu, 0)
+    part = hors / len(codes)
+    sys.stderr.write(f"\nContrôle département (attendu {attendu}) : "
+                     f"{dict(par_dept.most_common())}\n")
+    if part > 0.05:
+        raise SystemExit(
+            f"✖ {hors}/{len(codes)} notices ({part:.0%}) hors du département "
+            f"{attendu} — écriture refusée. Vérifie la résolution des communes."
+        )
+    if hors:
+        sys.stderr.write(f"  ⚠ {hors} notice(s) hors {attendu}, conservée(s) — "
+                         f"à vérifier une par une.\n")
+
+
 def emit_sql(leaves, out=None):
     out = out or sys.stdout          # liaison tardive (sûr sous redirect_stdout)
     cols = ("insee", "type", "annee", "cote", "archive_url", "iiif_manifest",
@@ -458,6 +578,9 @@ def main():
     ap.add_argument("--out", help="fichier SQL de sortie (UTF-8). Défaut : stdout.")
     ap.add_argument("--no-cache", action="store_true",
                     help="ignore le cache disque .cache/ (re-télécharge tout)")
+    ap.add_argument("--expect-dept", metavar="NN",
+                    help="code département attendu : refuse d'écrire si plus de "
+                         "5 %% des INSEE tombent ailleurs (garde-fou homonymes)")
     args = ap.parse_args()
     YEAR_MIN, YEAR_MAX = args.year_min, args.year_max
     if args.no_cache:
@@ -468,6 +591,9 @@ def main():
                      f"(période {YEAR_MIN}-{YEAR_MAX}) …\n")
     walk(args.etype, args.eid, leaves, seen)
     sys.stderr.write(f"\n{len(leaves)} feuilles collectées.\n")
+
+    if args.expect_dept:
+        controle_dept(leaves, args.expect_dept)
 
     if args.out:
         with open(args.out, "w", encoding="utf-8", newline="\n") as fh:

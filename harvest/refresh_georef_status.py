@@ -149,10 +149,15 @@ def main():
     cales = sum(1 for a in annots if a)
     print(f'  termine en {time.time()-t0:.0f}s : {cales} plan(s) cale(s) sur {len(rows)}')
 
-    # Collection d'annotations pour le calque « Géoréf en cours »
+    # Collection d'annotations pour le calque « Géoréf en cours ».
+    # Elle ne peut être écrite que sur un passage COMPLET : sous --dept, elle ne
+    # contiendrait qu'un département et effacerait les autres du calque.
     tous_items = [it for a, items in resultats if a for it in items]
     if args.dry_run:
         print(f'collection : {len(tous_items)} carte(s) (non ecrite, --dry-run)')
+    elif args.dept:
+        print(f'collection : non ecrite (--dept {args.dept} ; '
+              f'relancer sans --dept pour regenerer le calque)')
     else:
         write_collection(tous_items)
 

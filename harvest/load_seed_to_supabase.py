@@ -12,6 +12,11 @@ Usage : python harvest/load_seed_to_supabase.py harvest/seed_doubs.sql
 """
 import sys, os, re, json, urllib.request, urllib.parse, urllib.error
 
+try:                       # console Windows en cp1252 : « → » plantait le résumé
+    sys.stdout.reconfigure(encoding='utf-8')
+except Exception:
+    pass
+
 BATCH = 500
 
 def load_env():
@@ -38,11 +43,17 @@ def parse_seed(path):
     return cols, rows
 
 def parse_values(s, cols):
-    """Parse '(v1, v2, ...)' → dict {col: python_value}. Gère quotes SQL '' et NULL."""
+    """Parse '(v1, v2, ...)' → dict {col: python_value}. Gère quotes SQL '' et NULL.
+
+    On mémorise si la valeur était QUOTÉE dans le SQL : sans ça, '01195' était
+    converti en entier 1195 et l'INSEE de l'Ain perdait son zéro initial —
+    9 173 notices atterries dans des départements 10 à 14 inexistants.
+    Seules les valeurs non quotées peuvent devenir des nombres.
+    """
     s = s.strip()
     assert s.startswith('(') and s.endswith(')')
     s = s[1:-1]
-    out, i, buf, in_str = [], 0, '', False
+    out, i, buf, in_str, quoted = [], 0, '', False, False
     while i < len(s):
         c = s[i]
         if in_str:
@@ -53,29 +64,33 @@ def parse_values(s, cols):
             buf += c; i += 1
         else:
             if c == "'":
-                in_str = True; i += 1
+                in_str = True; quoted = True; i += 1
             elif c == ',':
-                out.append(buf.strip()); buf = ''; i += 1
+                out.append((buf.strip(), quoted)); buf, quoted = '', False; i += 1
             else:
                 buf += c; i += 1
-    out.append(buf.strip())
+    out.append((buf.strip(), quoted))
     if len(out) != len(cols):
         raise ValueError(f"{len(out)} valeurs pour {len(cols)} colonnes")
     d = {}
-    for k, v in zip(cols, out):
+    for k, (v, was_quoted) in zip(cols, out):
         vs = v.strip()
-        if vs.lower() == 'null':
+        if was_quoted:
+            d[k] = v                       # texte SQL : jamais converti
+        elif vs.lower() == 'null':
             d[k] = None
         elif vs.lower() in ('true', 'false'):
             d[k] = (vs.lower() == 'true')
         elif vs.lstrip('-').isdigit():
             d[k] = int(vs)
         else:
-            d[k] = v  # texte (déjà déquoté)
+            d[k] = v
     return d
 
 def post_batch(env, batch):
-    url = f"{env['SUPABASE_URL']}/rest/v1/document"
+    # `on_conflict` est indispensable : sans lui, `resolution=ignore-duplicates`
+    # ne vise que la clé primaire et une collision sur archive_url remonte en 409.
+    url = f"{env['SUPABASE_URL']}/rest/v1/document?on_conflict=archive_url"
     data = json.dumps(batch, ensure_ascii=False).encode('utf-8')
     req = urllib.request.Request(url, data=data, method='POST', headers={
         'apikey': env['SUPABASE_SERVICE_ROLE_KEY'],
