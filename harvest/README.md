@@ -166,6 +166,20 @@ donc venir de l'inventaire.
    s'arrête si Anubis reprend la main, et télécharge `arks_aisne.tsv`.
 3. **Vérifier le compte** : loin de 4 443 ⇒ la pagination a été interrompue.
 
+**La pagination Ligeo ne se devine pas** — relevée sur le portail :
+
+```
+page 1 : /archive/resultats/cadastres/n:12?RECH_plan=1&type=cadastres
+page 2 : /archive/resultats/cadastres/archive/n:12/limit:50/page:2?RECH_plan=1&…
+```
+
+Un segment `/archive/` **supplémentaire** apparaît, plus `limit:` et `page:`.
+Aucune heuristique « lien suivant » ne trouve ça : le portail ne pose pas de
+`rel="next"` exploitable, et une première version du collecteur s'arrêtait donc
+à la page 1 (50 arks sur 4 443). Le segment `limit:` est en revanche une
+aubaine — le script essaie 200 puis 100 et retombe sur 50 si le serveur
+plafonne, ce qui divise d'autant le nombre de requêtes.
+
 ```bash
 python harvest/seed_aisne.py --arks arks_aisne.tsv --limite 50   # essai
 python harvest/seed_aisne.py --arks arks_aisne.tsv
