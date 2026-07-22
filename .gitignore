@@ -34,3 +34,6 @@ proxy/**/.wrangler/
 # Explorations hors projet (vectorisation BD Carto etat-major)
 19siecle.qgz
 harvest/wfs_vigne_etatmajor.py
+
+# Depots de moisson Ligeo (TSV d arks, volumineux et regenerables)
+harvest/ligeo/depot/**/arks*.tsv

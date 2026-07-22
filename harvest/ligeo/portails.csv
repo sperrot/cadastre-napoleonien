@@ -1,0 +1,13 @@
+code,departement,portail,naan,url_resultats_page1,url_resultats_page2,nb_resultats,manifeste_exemple,licence,overlay_ok,statut
+02,Aisne,https://archives.aisne.fr,63271,https://archives.aisne.fr/archive/resultats/cadastres/n:12?RECH_plan=1&type=cadastres,https://archives.aisne.fr/archive/resultats/cadastres/archive/n:12/limit:50/page:2?RECH_plan=1&type=cadastres,4443,https://archives.aisne.fr/ark:/63271/vta55154026410f9/manifest,Licence Ouverte (Etalab 2.0),oui,moissonné
+16,Charente,https://lasource.archives.lacharente.fr,61904,,,6727,,Licence Ouverte (Etalab 2.0),oui,moissonné
+12,Aveyron,https://archives.aveyron.fr,,,,,,Licence ouverte,oui,à remplir
+13,Bouches-du-Rhône,https://www.archives13.fr,,,,,,Licence ouverte,oui,à remplir
+42,Loire,https://archives.loire.fr,,,,,,Licence ouverte,oui,à remplir
+53,Mayenne,https://chercher-archives.lamayenne.fr,,,,,,Licence ouverte,oui,à remplir
+56,Morbihan,https://recherche.archives.morbihan.fr,,,,,,Licence ouverte,oui,à remplir
+70,Haute-Saône,http://archives.haute-saone.fr,,,,,,Licence ouverte,oui,à remplir
+79,Deux-Sèvres,https://archives-deux-sevres-vienne.fr,,,,,,Licence ouverte,oui,à remplir (portail partagé avec la Vienne)
+86,Vienne,https://archives-deux-sevres-vienne.fr,,,,,,Licence ouverte,oui,à remplir (portail partagé avec les Deux-Sèvres)
+63,Puy-de-Dôme,http://www.archivesdepartementales.puydedome.fr,,,,,,Licence ouverte,oui,Ligeo SANS IIIF — pipeline worker
+07,Ardèche,https://archives.ardeche.fr,,,,,,à vérifier,,Ligeo SANS IIIF — pipeline worker
