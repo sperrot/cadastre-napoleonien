@@ -1,5 +1,5 @@
 code,departement,niveau,verifie,source_type,source_url,formats,licence,licence_cat,commentaire
-01,Ain,N4,oui,FranceArchives + AD (Ligeo),https://www.archives.ain.fr/n/archives-cadastrales/n:397,"ARK, IIIF",Réutilisation OK (CGU AD01),cgu,Cadastre complet 463 communes (findingaid FA) ; manifeste IIIF direct dans Allmaps confirmé ; seed repo en cours
+01,Ain,N4,oui,FranceArchives + AD (Ligeo),https://www.archives.ain.fr/n/archives-cadastrales/n:397,"ARK, IIIF",Réutilisation OK (CGU AD01),cgu,Cadastre complet 463 communes (findingaid FA) ; manifeste IIIF direct dans Allmaps confirmé ; moissonné : 9 173 documents sur 391 communes actuelles (2026-07-22)
 02,Aisne,N2,non,AD (Ligeo),https://archives.aisne.fr/archive/recherche/cadastres/n:12,JPG (visionneuse),À vérifier,inconnue,Cadastre en ligne ; IIIF probable (famille Ligeo) à tester
 03,Allier,N2,non,AD (Arkothèque),https://archives.allier.fr/archives-en-ligne/cartes-plans-documents-figures/cadastre-napoleonien,JPG (visionneuse),À vérifier,inconnue,
 04,Alpes-de-Haute-Provence,N2,non,AD (portail),https://www.archives04.fr/s/15/cadastre/,JPG (visionneuse),À vérifier,inconnue,

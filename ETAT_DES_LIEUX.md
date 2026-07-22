@@ -41,7 +41,7 @@ Familles de visualiseurs AD identifiées (candidates aux pipelines du repo) : **
 
 | N° | Département | Source (lien) | Formats dispo | État | Licence | Commentaire |
 |---|---|---|---|---|---|---|
-| 01 | Ain | [FranceArchives + AD (Ligeo)](https://www.archives.ain.fr/n/archives-cadastrales/n:397) | ARK, IIIF | N4 ✅ | Réutilisation OK (CGU AD01) | Cadastre complet 463 communes (findingaid FA) ; manifeste IIIF direct dans Allmaps confirmé ; seed repo en cours |
+| 01 | Ain | [FranceArchives + AD (Ligeo)](https://www.archives.ain.fr/n/archives-cadastrales/n:397) | ARK, IIIF | N4 ✅ | Réutilisation OK (CGU AD01) | Cadastre complet 463 communes (findingaid FA) ; manifeste IIIF direct dans Allmaps confirmé ; **moissonné : 9 173 documents sur 391 communes actuelles** (2026-07-22) |
 | 02 | Aisne | [AD (Ligeo)](https://archives.aisne.fr/archive/recherche/cadastres/n:12) | JPG (visionneuse) | N2 ⚠️ | À vérifier | Cadastre en ligne ; IIIF probable (famille Ligeo) à tester |
 | 03 | Allier | [AD (Arkothèque)](https://archives.allier.fr/archives-en-ligne/cartes-plans-documents-figures/cadastre-napoleonien) | JPG (visionneuse) | N2 ⚠️ | À vérifier |  |
 | 04 | Alpes-de-Haute-Provence | [AD (portail)](https://www.archives04.fr/s/15/cadastre/) | JPG (visionneuse) | N2 ⚠️ | À vérifier |  |
