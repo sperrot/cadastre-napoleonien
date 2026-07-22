@@ -55,6 +55,65 @@ puis le `seed_*.sql` produit.
 
 ---
 
+# `build_alias_insee.py` — apparier communes anciennes et communes actuelles
+
+Les inventaires d'archives nomment les communes telles qu'elles étaient au
+XIXᵉ siècle. `geo.api.gouv.fr` ne connaît que les communes **actuelles** :
+« Amareins », « Gourville », « Le Grand-Abergement » n'y résolvent pas. Le
+script reconstitue hors ligne la chaîne complète, depuis le Code officiel
+géographique de l'INSEE :
+
+> libellé historique → code d'époque → … → **commune actuelle**
+
+```bash
+python harvest/build_alias_insee.py --dept 16 [--dry-run]
+```
+
+Il fusionne le résultat dans `communes_alias.json`, que `harvest_francearchives.py`
+consulte avant d'interroger geo.api. **Les entrées déjà présentes font foi** :
+une correction manuelle n'est jamais écrasée par un rerun.
+
+Trois fichiers publics, mis en cache dans `harvest/_cog/` (14 Mo, gitignoré,
+régénérable) :
+
+| Fichier | Rôle |
+|---|---|
+| `v_commune_depuis_1943.csv` | tous les libellés de communes depuis 1943 |
+| `v_mvt_commune_2025.csv` | les mouvements (fusions, scissions, rétablissements) |
+| `@etalab/decoupage-administratif` | les communes actuelles — où s'arrête la chaîne |
+
+## Ce qu'il refuse de faire, et pourquoi
+
+Le script **préfère ne rien répondre plutôt que deviner**. Trois garde-fous, tous
+issus de bugs constatés :
+
+- **Successeurs multiples.** 71 communes du COG ont été *scindées*, pas
+  fusionnées : `25015` est partagée entre Amondans, Cléron, Fertans et Malans.
+  Écraser le successeur reviendrait à en désigner une au hasard. `resout()`
+  renvoie `None` dès qu'un maillon est scindé, et le libellé est listé « sans
+  successeur actuel » dans le rapport.
+- **Libellés ambigus.** Si un même libellé mène à plusieurs communes actuelles
+  (« Saint-Médard » en Charente → Saint-Médard *ou* Val-d'Auge), il est écarté et
+  signalé, pas départagé.
+- **Aucun rapprochement approché.** L'appariement tolère la casse, les accents et
+  les séparateurs (`cle_commune()`, côté harvester) — rien de plus. La recherche
+  floue de geo.api avait résolu « Ain » en **Ainhoa (64014)** et envoyé 5 905
+  notices dans le Pyrénées-Atlantiques : on ne la réintroduit pas ici.
+
+## Portée réelle
+
+Le COG ne remonte qu'à **1943**. Les communes absorbées avant restent hors
+d'atteinte quel que soit l'outil : 7 pour la Charente, 5 pour l'Ain, à saisir à
+la main. Quand l'inventaire porte des **coordonnées** (champ `Lieu` d'un
+manifeste, `geo:lat`/`geo:long` d'un lieu FranceArchives), le géocodage inverse
+`geo.api.gouv.fr?lat=&lon=` les rattrape sans intervention — c'est ce qui a
+résolu 45 des 65 cas de l'Ain (Amareins 46.08097/4.78352 → 01165 Francheleins).
+
+Contrôle croisé : sur l'Ain, les deux méthodes — COG et coordonnées — donnent
+**12 rattachements identiques, 0 désaccord**.
+
+---
+
 # Charente (16) — fonds 3 P, portail Ligeo « La Source »
 
 `seed_charente.py` produit `seed_charente.sql` (6 727 planches, 332 communes
