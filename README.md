@@ -80,7 +80,7 @@ Familles de visualiseurs AD identifiées (candidates aux pipelines du repo) : **
 | N° | Département | Source (lien) | Formats dispo | État | Licence | Commentaire |
 |---|---|---|---|---|---|---|
 | 01 | Ain | [FranceArchives + AD (Ligeo)](https://www.archives.ain.fr/n/archives-cadastrales/n:397) | ARK, IIIF | N4 ✅ | Réutilisation OK (CGU AD01) | Cadastre complet 463 communes (findingaid FA) ; manifeste IIIF direct dans Allmaps confirmé ; seed repo en cours |
-| 02 | Aisne | [AD (Ligeo)](https://archives.aisne.fr/archive/recherche/cadastres/n:12) | JPG (visionneuse) | N2 ⚠️ | À vérifier | Cadastre en ligne ; IIIF probable (famille Ligeo) à tester |
+| 02 | Aisne | [AD (Ligeo)](https://archives.aisne.fr/archive/recherche/cadastres/n:12) | JPG (visionneuse) | N4 ✅ | À vérifier | Cadastre en ligne ; IIIF ok (licence ouverte etalab 2.0) |
 | 03 | Allier | [AD (Arkothèque)](https://archives.allier.fr/archives-en-ligne/cartes-plans-documents-figures/cadastre-napoleonien) | JPG (visionneuse) | N2 ⚠️ | À vérifier |  |
 | 04 | Alpes-de-Haute-Provence | [AD (portail)](https://www.archives04.fr/s/15/cadastre/) | JPG (visionneuse) | N2 ⚠️ | À vérifier |  |
 | 05 | Hautes-Alpes | [AD (Ligeo)](https://archives.hautes-alpes.fr/archive/resultats/cadastrenumerise/n:199?type=cadastrenumerise) | JPG (visionneuse) | N2 ⚠️ | À vérifier | ~1 800 docs cadastre numérisés référencés FranceArchives |
@@ -91,10 +91,10 @@ Familles de visualiseurs AD identifiées (candidates aux pipelines du repo) : **
 | 10 | Aube | [AD (Arkothèque)](https://www.archives-aube.fr/recherches/documents-numerises/cadastre-cartes-et-plans/cadastre-napoleonien) | JPG (visionneuse) | N2 ⚠️ | À vérifier |  |
 | 11 | Aude | [AD (portail)](https://archivesdepartementales.aude.fr/les-archives-en-ligne) | JPG (visionneuse) | N2 ⚠️ | À vérifier | Cadastre parmi les 3,7 M pages numérisées ; page dédiée à confirmer |
 | 12 | Aveyron | [AD (Ligeo)](https://archives.aveyron.fr/archive/recherche/cadastre/n:23) | JPG (visionneuse) | N2 ⚠️ | À vérifier |  |
-| 13 | Bouches-du-Rhône | [AD (Ligeo)](https://www.archives13.fr/archive/recherche/cadastre/n:36) | JPG (visionneuse) | N2 ⚠️ | À vérifier |  |
+| 13 | Bouches-du-Rhône | [AD (Ligeo)](https://www.archives13.fr/archive/recherche/cadastre/n:36) | JPG (visionneuse) | N2 ⚠️ | IIIF présent |  |
 | 14 | Calvados | [FranceArchives + AD (Mnesys)](https://archives.calvados.fr/search/form/dfc4e27b-4f7e-431e-b413-655e793be3b7) | ARK (sans IIIF) | N2 ✅ | Réutilisation OK (CGU AD14) | Moissonnable FA mais pas de manifeste IIIF (visionneuse ARK) ; harvester repo à adapter |
 | 15 | Cantal | [AD (portail)](https://archives.cantal.fr/rechercher/cadastre-et-archives-foncieres) | JPG (visionneuse) | N2 ⚠️ | À vérifier |  |
-| 16 | Charente | [FranceArchives + AD (Ligeo)](https://lasource.archives.lacharente.fr/archive/resultats/cadastre/n:125?type=cadastre) | IIIF | N4 ⚠️ | À vérifier | Numérisation intégrale confirmée (portail La Source testé) ; ≈11 000 docs cadastre en IIIF via FranceArchives → candidat prioritaire de moisson |
+| 16 | Charente | [FranceArchives + AD (Ligeo)](https://lasource.archives.lacharente.fr/archive/resultats/cadastre/n:125?type=cadastre) | IIIF | N4 ✅ | ok | Numérisation intégrale confirmée (portail La Source testé) ; ≈11 000 docs cadastre en IIIF |
 | 17 | Charente-Maritime | [AD (Archinoë)](http://www.archinoe.net/v2/ad17/cadastre.html) | JPG (visionneuse) | N2 ⚠️ | À vérifier | Pipeline Archinoë→IIIF du repo (AD21) applicable |
 | 18 | Cher | [AD (Arkothèque)](https://www.archives18.fr/archives-numerisees/plans-du-cadastre) | JPG (visionneuse) | N2 ⚠️ | À vérifier |  |
 | 19 | Corrèze | [AD (Archinoë)](http://www.archinoe.fr/cg19/cadastre.php) | JPG (visionneuse) | N2 ⚠️ | À vérifier | ≈4 600 docs numérisés référencés FranceArchives ; pipeline Archinoë applicable |
