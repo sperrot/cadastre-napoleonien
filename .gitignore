@@ -12,6 +12,8 @@ Thumbs.db
 
 # Cache disque du harvester
 harvest/.cache/
+# Fichiers COG INSEE téléchargés par build_alias_insee.py (14 Mo, régénérables)
+harvest/_cog/
 
 # Secrets locaux (clé service_role Supabase, etc.)
 .env

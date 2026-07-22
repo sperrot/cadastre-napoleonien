@@ -28,8 +28,10 @@ import sys
 import os
 import time
 import re
+import json
 import argparse
 import collections
+import unicodedata
 import requests
 from rdflib import Graph, URIRef, Namespace
 from rdflib.namespace import RDF, RDFS
@@ -391,19 +393,38 @@ def insee_of_location(loc_id: str):
 # résolvent : communes disparues avant l'indexation FA, variantes d'orthographe
 # des AD (« Saint-Martin-du-Fresne » pour Saint-Martin-du-Frêne). Table par
 # département, tenue dans communes_alias.json (source : COG INSEE).
+def cle_commune(nom: str) -> str:
+    """Clé de comparaison d'un libellé de commune : casse, accents et
+    séparateurs neutralisés. Les inventaires d'archives écrivent « Etrez » là où
+    le COG écrit « Étrez ». On ne va PAS plus loin (pas d'approximation) : c'est
+    la recherche floue qui avait envoyé l'Ain sur Ainhoa."""
+    s = "".join(c for c in unicodedata.normalize("NFD", (nom or "").lower())
+                if unicodedata.category(c) != "Mn")
+    return re.sub(r"[\s\-']+", " ", s).strip()
+
+
 def load_alias():
     chemin = os.path.join(os.path.dirname(os.path.abspath(__file__)),
                           "communes_alias.json")
     try:
         with open(chemin, encoding="utf-8") as fh:
-            import json
             data = json.load(fh)
     except Exception as e:
         sys.stderr.write(f"⚠ communes_alias.json illisible ({e}) — alias ignorés\n")
         return {}
-    return {(d, nom): code
-            for d, table in data.items() if not d.startswith("_")
-            for nom, code in table.items()}
+    table, ambigus = {}, set()
+    for d, entrees in data.items():
+        if d.startswith("_"):
+            continue
+        for nom, code in entrees.items():
+            k = (d, cle_commune(nom))
+            if k in table and table[k] != code:
+                ambigus.add(k)          # deux communes que la clé confond
+            table[k] = code
+    for k in ambigus:                   # on préfère ne rien répondre qu'au hasard
+        table.pop(k, None)
+        sys.stderr.write(f"⚠ alias ambigu ignoré : {k[0]} / {k[1]}\n")
+    return table
 
 
 COMMUNE_ALIAS = load_alias()
@@ -446,8 +467,8 @@ def insee_of(commune_name: str, dept: str = None):
     name = name.strip(" . ")
     if not name:
         return None
-    if (dept, name) in COMMUNE_ALIAS:
-        return COMMUNE_ALIAS[(dept, name)]
+    if (dept, cle_commune(name)) in COMMUNE_ALIAS:
+        return COMMUNE_ALIAS[(dept, cle_commune(name))]
     if PAS_UNE_COMMUNE.match(name):        # titre de rubrique : pas de requête
         return None
     # Clé de cache par (nom, dept) : deux « Chatenois » de départements
