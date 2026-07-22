@@ -114,6 +114,84 @@ Contrôle croisé : sur l'Ain, les deux méthodes — COG et coordonnées — do
 
 ---
 
+# Aisne (02) — cadastre napoléonien, portail Ligeo `archives.aisne.fr`
+
+`seed_aisne.py` produit `seed_aisne.sql`. **Deuxième portail Ligeo traité**, et
+le plus simple des deux : ici le manifeste se suffit à lui-même.
+
+## Ce qui est ouvert
+
+Même partage qu'en Charente — HTML sous **Anubis**, IIIF ouvert — vérifié :
+
+| Endpoint | Accès |
+|---|---|
+| `/ark:/63271/<ark>/manifest` | ouvert, `Access-Control-Allow-Origin: *` |
+| `/iiif/FRAD002_CADASTRE/…/info.json` + tuiles | ouvert, **Image API 3.0 level1** |
+| `/archive/resultats/…`, `/oai`, `/sitemap/*`, `iiif/search` | Anubis |
+
+⚠️ Le CORS n'apparaît **que si la requête porte un en-tête `Origin`**. Tester
+sans `Origin` fait conclure à tort à l'absence de CORS.
+
+Les images sont **réellement tuilées** (256×256, `scaleFactors` 1→32, ~23 Mpx) :
+contrairement au Doubs, elles seront consommables par le serveur de tuiles
+Allmaps sans redimensionnement intermédiaire.
+
+## Le manifeste porte tout
+
+```
+label    : « 3P0001_01 • Abbecourt : Tableau d'assemblage • 1828 »
+metadata : Contexte            → « Cadastre … > A > Abbecourt »
+           Dates               → « 1828 » (ou « sans date »)
+           Commune ou lieu-dit → « Abbécourt (Aisne, France) »   ← accentué
+service  → …/iiif/FRAD002_CADASTRE/FRAD002_3P0001/FRAD002_3P0001_01.jpg
+```
+
+D'où la différence avec la Charente : **la seule entrée nécessaire est la liste
+des arks**. Ni cote, ni titre, ni arbre des communes à extraire du HTML — et
+aucune dérivation de chemin d'image à valider, puisque le manifeste déclare le
+service Image API.
+
+## Récupération des arks (étape navigateur, ~3 min)
+
+Une notice = une planche = un ark. Il n'existe **aucune route
+image → manifeste** : `ark:/63271/<ark>/img:<IMAGE_ID>` ignore le suffixe et
+renvoie toujours le manifeste de l'ark ; un ark inventé échoue. Les arks doivent
+donc venir de l'inventaire.
+
+1. Ouvrir la page de résultats dans un navigateur :
+   `…/archive/resultats/cadastres/n:12?RECH_plan=1&type=cadastres` (**4 443**
+   résultats).
+2. Coller `harvest/aisne_collecte_arks.js` dans la console. Il pagine seul en
+   réutilisant la session (5 s entre deux pages, le `Crawl-delay` déclaré),
+   s'arrête si Anubis reprend la main, et télécharge `arks_aisne.tsv`.
+3. **Vérifier le compte** : loin de 4 443 ⇒ la pagination a été interrompue.
+
+```bash
+python harvest/seed_aisne.py --arks arks_aisne.tsv --limite 50   # essai
+python harvest/seed_aisne.py --arks arks_aisne.tsv
+python harvest/load_seed_to_supabase.py harvest/seed_aisne.sql
+```
+
+Les manifestes sont mis en cache dans `_manifestes_aisne.json` : les reruns sont
+gratuits.
+
+## Points de vigilance
+
+- **Licence Ouverte Etalab 2.0** confirmée par le service — `overlay_ok = true`.
+  Attention : le champ `ligeoReUseProfil` du manifeste, lui, ne dit *pas* que
+  la licence est ouverte (« soumises à la législation en vigueur et aux
+  conditions fixées par le conseil départemental »), et la page des CGU est
+  derrière Anubis. Ne pas se fier au manifeste seul pour un autre portail Ligeo.
+- **Le fonds est lacunaire**, en particulier sur l'arrondissement de
+  Château-Thierry : `3P0006` manque déjà parmi les douze premiers dossiers. Le
+  script n'invente rien — une commune sans planche n'apparaît pas.
+- `parse_ident` renvoie une cote vide plutôt qu'une cote devinée si le motif
+  `3P0001_01` n'est pas reconnu ; le compte est affiché en fin de run.
+- Garde-fou département intégré : refus d'écrire si plus de 5 % des INSEE
+  tombent hors du 02.
+
+---
+
 # Charente (16) — fonds 3 P, portail Ligeo « La Source »
 
 `seed_charente.py` produit `seed_charente.sql` (6 727 planches, 332 communes
