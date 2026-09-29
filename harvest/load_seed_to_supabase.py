@@ -9,6 +9,11 @@ en dict, POST vers /rest/v1/document par lots. Header
 UNIQUE(archive_url) est déjà en place.
 
 Usage : python harvest/load_seed_to_supabase.py harvest/seed_doubs.sql
+        python harvest/load_seed_to_supabase.py --replace-dept 39 harvest/seed_jura.sql
+
+⚠ Sans --replace-dept, une ligne dont l'archive_url existe déjà est IGNORÉE
+(et comptée « chargée ») : un seed corrigé ne remplace rien. --replace-dept NN
+supprime d'abord toutes les lignes du département (insee LIKE 'NN%').
 """
 import sys, os, re, json, urllib.request, urllib.parse, urllib.error
 
@@ -104,11 +109,40 @@ def post_batch(env, batch):
     except urllib.error.HTTPError as e:
         return e.code, e.read().decode('utf-8', 'replace')[:400]
 
+def delete_dept(env, dept):
+    url = f"{env['SUPABASE_URL']}/rest/v1/document?insee=like.{urllib.parse.quote(dept)}*"
+    req = urllib.request.Request(url, method='DELETE', headers={
+        'apikey': env['SUPABASE_SERVICE_ROLE_KEY'],
+        'Authorization': 'Bearer ' + env['SUPABASE_SERVICE_ROLE_KEY'],
+        'Prefer': 'return=representation',
+        'Accept': 'application/json',
+    })
+    try:
+        r = urllib.request.urlopen(req, timeout=300)
+        n = len(json.loads(r.read() or b'[]'))
+        print(f"département {dept} : {n} lignes supprimées avant chargement")
+    except urllib.error.HTTPError as e:
+        raise SystemExit(f"suppression {dept} impossible : HTTP {e.code} "
+                         f"{e.read().decode('utf-8', 'replace')[:300]}")
+
 def main():
-    if len(sys.argv) < 2:
-        raise SystemExit(f"Usage: {sys.argv[0]} <seed.sql> [<seed.sql> ...]")
+    args = sys.argv[1:]
+    dept = None
+    if args[:1] == ['--replace-dept']:
+        if len(args) < 2 or not re.fullmatch(r'\d[\dAB]', args[1]):
+            raise SystemExit("--replace-dept attend un code département (ex. 39)")
+        dept, args = args[1], args[2:]
+    if not args:
+        raise SystemExit(f"Usage: {sys.argv[0]} [--replace-dept NN] <seed.sql> [<seed.sql> ...]")
     env = load_env()
-    for path in sys.argv[1:]:
+    if dept:
+        for path in args:                  # garde-fou : le seed doit être du bon département
+            _, rows = parse_seed(path)
+            hors = [r for r in rows if not str(r.get('insee', '')).startswith(dept)]
+            if hors:
+                raise SystemExit(f"{path} : {len(hors)} lignes hors du {dept} — rien supprimé")
+        delete_dept(env, dept)
+    for path in args:
         print(f"\n=== {path} ===")
         cols, rows = parse_seed(path)
         print(f"colonnes: {cols}")
