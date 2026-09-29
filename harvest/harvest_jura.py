@@ -326,9 +326,20 @@ COLS = ("insee", "type", "annee", "archive_url", "image_url", "iiif_manifest",
         "source", "source_url", "licence", "licence_overlay_ok", "statut")
 
 
+def commune_of(leaf):
+    """Nœud commune parent ; à défaut (planche rangée hors d'un nœud commune),
+    la commune en tête du titre : « Abergement-La-Ronce, section A, … »."""
+    if leaf.get("commune"):
+        return leaf["commune"]
+    return (leaf.get("title") or "").split(",")[0].strip() or None
+
+
 def emit(leaves, out_path):
     rows, sans_insee, sans_image, multi, via_fusion = [], [], 0, 0, set()
     for i, l in enumerate(leaves, 1):
+        if not l.get("commune"):
+            l["commune"] = commune_of(l)
+            l["depuis_titre"] = True
         code, cible = insee_of(l["commune"])
         if not code:
             sans_insee.append(l)
@@ -370,10 +381,18 @@ def emit(leaves, out_path):
         sys.stderr.write("  rattachées via la mention de fusion :\n")
         for s in sorted(via_fusion):
             sys.stderr.write(f"    {s}\n")
+    n_titre = sum(1 for l in leaves if l.get("depuis_titre"))
+    if n_titre:
+        sys.stderr.write(f"  {n_titre} planches hors nœud commune → commune lue dans le titre\n")
     if sans_insee:
-        communes = sorted({l["commune"] for l in sans_insee})
+        communes = sorted({l["commune"] or "(sans commune)" for l in sans_insee})
+        tsv = os.path.splitext(out_path)[0] + "_sans_insee.tsv"
+        with open(tsv, "w", encoding="utf-8", newline="\n") as fh:
+            fh.write("commune\ttitre\tark\n")
+            for l in sans_insee:
+                fh.write(f"{l['commune'] or ''}\t{l['title']}\t{l['url']}\n")
         sys.stderr.write(f"  ⚠ {len(sans_insee)} planches / {len(communes)} communes sans INSEE "
-                         f"→ to_do/INSEE_a_reconcilier.md :\n")
+                         f"(détail : {tsv}) :\n")
         for c in communes:
             sys.stderr.write(f"    {c}\n")
 
