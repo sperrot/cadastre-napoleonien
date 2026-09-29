@@ -21,7 +21,7 @@ except Exception:
 
 WORKER = "https://iiif-allmaps.sperrot.workers.dev"
 JPG = (sys.argv[1] if len(sys.argv) > 1 else
-       "https://archives39.fr/ark:/36595/7kbm3w2qnglr/09015152-973c-47cf-8c36-995ca8c72371")
+       "https://archives39.fr/images/09015152-973c-47cf-8c36-995ca8c72371.jpg")
 UA = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/124.0 Safari/537.36"}
 
 

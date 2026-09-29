@@ -21,10 +21,12 @@ Arbre du fonds « Cadastre » (racine 1fcfd6ea…) :
           Etats de sections et matrices             ← écarté
 
 Une feuille porte `data.url` (ark public) et `data.contentUrl`
-(/record/36595/<ark>/content). Le JPEG se télécharge par
-/ark:/36595/<ark>/<uuid_média> ; l'uuid média est cherché dans la réponse de
-contentUrl. Référence connue (--check) :
-    7kbm3w2qnglr → 09015152-973c-47cf-8c36-995ca8c72371
+(/record/36595/<ark>/content, fragment HTML). Ce fragment porte l'uuid média
+(lien « Afficher » /ark:/36595/<ark>/<uuid>, qui n'est QUE la page de la
+visionneuse), la cote et la date de la planche. Le fichier lui-même est servi
+en statique par /images/<uuid>.jpg (public, Range accepté — relevé HAR).
+Référence connue (--check) :
+    7kbm3w2qnglr → /images/09015152-973c-47cf-8c36-995ca8c72371.jpg · 3Pplan1 · 1813
 
 Licence : Licence Ouverte Etalab sur les feuilles du cadastre, par accord
 écrit de l'AD39 (2026-09) → overlay autorisé. Le JPEG passe en IIIF par le
@@ -199,6 +201,29 @@ def ark_of(url):
 # --------------------------------------------------------------------------
 # Image : uuid média + éventuel manifeste IIIF natif
 # --------------------------------------------------------------------------
+def notice_field(frag, label):
+    """Valeur d'un champ « <p class="attribut">label</p> … <div class="content"> »."""
+    m = re.search(r'class="attribut">\s*' + re.escape(label) + r'\s*</p>.*?class="read-more"[^>]*>(.*?)</div>',
+                  frag, re.S)
+    txt = " ".join(re.sub(r"<[^>]+>", " ", m.group(1)).split()) if m else ""
+    return txt or None
+
+
+def meta_of(leaf):
+    """→ (cote, année) de la planche : champs de la DERNIÈRE notice (notice-0),
+    les précédentes décrivant les niveaux parents (« 1790-1940 », « 3P »)."""
+    txt = cached_get(f"content_{leaf['ark']}",
+                     leaf.get("content") or f"{BASE}/record/{NAAN}/{leaf['ark']}/content",
+                     want_json=False) or ""
+    i = txt.rfind('notice-info notice-0')
+    frag = txt[i:] if i >= 0 else ""
+    cote = notice_field(frag, "Cote/Cotes extrêmes")
+    date = notice_field(frag, "Date") or ""
+    m = re.search(r"\b(1[78]\d\d)\b", date)
+    annee = int(m.group(1)) if m and 1790 <= int(m.group(1)) <= 1870 else None
+    return cote, annee
+
+
 def media_of(leaf):
     """→ (jpg_url | None, manifeste_natif | None, nb_images)."""
     ark = leaf["ark"]
@@ -217,7 +242,7 @@ def media_of(leaf):
     uuids = list(dict.fromkeys(u.lower() for u in uuids))
     m = re.search(r"https?://[^\"'\s<>]+/manifest(?:\.json)?\b", flat)
     manifest = m.group(0) if m else None
-    jpg = f"{BASE}/ark:/{NAAN}/{ark}/{uuids[0]}" if uuids else None
+    jpg = f"{BASE}/images/{uuids[0]}.jpg" if uuids else None
     return jpg, manifest, len(uuids)
 
 
@@ -322,7 +347,7 @@ def q(v):
     return "'" + str(v).replace("'", "''") + "'"
 
 
-COLS = ("insee", "type", "annee", "archive_url", "image_url", "iiif_manifest",
+COLS = ("insee", "type", "annee", "cote", "archive_url", "image_url", "iiif_manifest",
         "source", "source_url", "licence", "licence_overlay_ok", "statut")
 
 
@@ -353,7 +378,8 @@ def emit(leaves, out_path):
             sans_image += 1
         iiif = manifest or (f"{WORKER}/static-manifest?u={urllib.parse.quote(jpg, safe='')}"
                             if jpg else None)
-        rows.append((code, classify(l["title"]), annee_of(l["title"]), l["url"], jpg, iiif,
+        cote, annee = meta_of(l)
+        rows.append((code, classify(l["title"]), annee or annee_of(l["title"]), cote, l["url"], jpg, iiif,
                      SOURCE, BASE, LICENCE, True, "georef" if iiif else "lien"))
         if i % 100 == 0:
             sys.stderr.write(f"  … {i}/{len(leaves)} planches\n")
@@ -374,8 +400,11 @@ def emit(leaves, out_path):
     types = {}
     for r in rows:
         types[r[1]] = types.get(r[1], 0) + 1
+    n_annee = sum(1 for r in rows if r[2])
+    n_cote = sum(1 for r in rows if r[3])
     sys.stderr.write(f"\n→ {out_path}\n  {len(rows)} planches · "
                      f"{len({r[0] for r in rows})} communes · {types}\n"
+                     f"  année : {n_annee}/{len(rows)} · cote : {n_cote}/{len(rows)}\n"
                      f"  sans image : {sans_image} · multi-images : {multi}\n")
     if via_fusion:
         sys.stderr.write("  rattachées via la mention de fusion :\n")
@@ -402,11 +431,19 @@ def check():
     """Auto-test : la planche de référence doit donner l'uuid média connu."""
     leaf = {"ark": REF_ARK, "content": f"{BASE}/record/{NAAN}/{REF_ARK}/content"}
     jpg, manifest, n = media_of(leaf)
+    cote, annee = meta_of(leaf)
     sys.stderr.write(f"contentUrl  : {leaf['content']}\n"
                      f"image       : {jpg}  ({n} uuid candidats)\n"
-                     f"manifeste   : {manifest}\n")
-    attendu = f"{BASE}/ark:/{NAAN}/{REF_ARK}/{REF_MEDIA}"
-    if jpg == attendu:
+                     f"manifeste   : {manifest}\n"
+                     f"cote/année  : {cote} / {annee}\n")
+    attendu = f"{BASE}/images/{REF_MEDIA}.jpg"
+    try:
+        r = session.get(jpg or attendu, headers={"Range": "bytes=0-3"}, timeout=30)
+        est_jpeg = r.content[:3] == b"\xff\xd8\xff"
+    except requests.RequestException:
+        est_jpeg = False
+    sys.stderr.write(f"fichier     : {'JPEG ✔' if est_jpeg else 'PAS un JPEG ✖'}\n")
+    if jpg == attendu and est_jpeg and (cote, annee) == ("3Pplan1", 1813):
         sys.stderr.write("✔ uuid média retrouvé — extraction calibrée\n")
         return 0
     p = os.path.join(CACHE_DIR, f"jura_content_{REF_ARK}.txt")
