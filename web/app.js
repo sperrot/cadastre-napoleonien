@@ -60,10 +60,39 @@ function updateCommuneUrl(c) {
   if (path && location.pathname !== path) history.replaceState(null, "", path);
 }
 
+// Contours simplifiés des départements (couche carte + cadrage des routes)
+const DEPTS_GEOJSON =
+  "https://raw.githubusercontent.com/gregoiredavid/france-geojson/master/departements-version-simplifiee.geojson";
+
+// Cadre la carte sur un ou plusieurs départements (routes /<region> et /<region>/<dept>)
+async function fitDepts(codes) {
+  try {
+    const res = await fetch(DEPTS_GEOJSON);
+    if (!res.ok) return;
+    const feats = (await res.json()).features.filter((f) => codes.includes(f.properties?.code));
+    if (!feats.length) return;
+    const b = new maplibregl.LngLatBounds();
+    for (const f of feats) eachCoord(f.geometry, ([lng, lat]) => b.extend([lng, lat]));
+    showView("map");
+    map.fitBounds(b, { padding: 40, duration: 0 });
+  } catch (e) {
+    /* hors ligne → vue France par défaut */
+  }
+}
+
 // Au chargement : ouvre la vue désignée par l'URL (carte ou fiche GED)
 async function applyRoute() {
   const r = parseRoute();
-  if (!r || !/^\w{5}$/.test(r.insee || "")) return;
+  if (!r) return;
+
+  // /<region>/<dept> (ex. /bfc/39) ou /<region> seul → cadrage carte
+  if (r.vue === "carte" && !r.insee) {
+    const dept = (r.dept || "").toUpperCase();
+    if (dept && DEPT_TO_REGION[dept]) return fitDepts([dept]);
+    if (!dept && REGIONS[r.region]) return fitDepts(REGIONS[r.region].depts);
+    return;
+  }
+  if (!/^\w{5}$/.test(r.insee || "")) return;
 
   if (r.vue === "ged") {
     showView("docs");
@@ -342,7 +371,7 @@ map.on("load", () => {
   // Contours des départements — sous les couches commune
   map.addSource("departements", {
     type: "geojson",
-    data: "https://raw.githubusercontent.com/gregoiredavid/france-geojson/master/departements-version-simplifiee.geojson",
+    data: DEPTS_GEOJSON,
   });
   map.addLayer({
     id: "departements-fill",
