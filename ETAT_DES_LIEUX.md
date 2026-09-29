@@ -32,7 +32,7 @@ Cas mixtes classés au niveau le plus haut atteint, précisé en commentaire
 | **Géoréférencé ou vectorisé disponible (≥ N4)** | **15 / 95** | **16 %** |
 | **Diffusion exploitable hors visualiseur (≥ N3)** | **18 / 95** | **19 %** |
 | IIIF disponible ou générable identifié | 15 / 95 | 16 % |
-| Licence ouverte (LO/ODbL/équiv.) sur au moins une source | 15 / 95 | 16 % |
+| Licence ouverte (LO/ODbL/équiv.) sur au moins une source | 16 / 95 | 17 % |
 | Lignes vérifiées en réel (✅) | 20 / 95 | 21 % |
 
 Familles de visualiseurs AD identifiées (candidates aux pipelines du repo) : **Ligeo** 24 · **Mnesys** 16 · **Arkothèque** 13 · **Archinoë** 6 · **Bach** 5 · **THOT** 3 · **Pleade** 1.
@@ -78,7 +78,7 @@ Familles de visualiseurs AD identifiées (candidates aux pipelines du repo) : **
 | 36 | Indre | [AD (Bach)](http://www.archives36.fr/f/Cadastre/mosaique/) | JPG (visionneuse) | N2 ⚠️ | À vérifier |  |
 | 37 | Indre-et-Loire | [AD (Mnesys)](https://archives.touraine.fr/search/form/0883f4b0-8c3d-427b-8618-d9e67239068b) | ARK (visionneuse) | N2 ⚠️ | À vérifier | ≈12 700 docs numérisés référencés FA (beaucoup d'E-dépôts communaux) |
 | 38 | Isère | [AD (Arkothèque)](https://archivesenligne1.archives-isere.fr/cadastre) | JPG (visionneuse) | N2 ⚠️ | À vérifier |  |
-| 39 | Jura | [AD (Mnesys)](https://archives39.fr/search/form/0a4fae72-ee28-4663-ac8f-e4a4e89ebc68) | ARK (visionneuse) | N2 ✅ | Restrictive : rediffusion/modification interdites | ≈8 800 docs numérisés référencés FA ; manifeste IIIF caché derrière la SPA ; licence bloquante pour overlay |
+| 39 | Jura | [AD (Mnesys)](https://archives39.fr/search/form/0a4fae72-ee28-4663-ac8f-e4a4e89ebc68) | ARK (visionneuse) | N2 ✅ | Licence Ouverte Etalab (accord écrit AD39 2026-09) | ≈8 800 docs numérisés référencés FA ; manifeste IIIF caché derrière la SPA ; accord écrit de l'AD : Licence Ouverte Etalab sur les feuilles du cadastre → overlay autorisé |
 | 40 | Landes | [AD (Arkothèque)](http://www.archives.landes.fr/arkotheque/consult_fonds/index.php?ref_fonds=1) | JPG (visionneuse) | N2 ⚠️ | À vérifier |  |
 | 41 | Loir-et-Cher | [AD (portail)](http://archives.culture41.fr/archives/recherche/cadastre) | JPG (visionneuse) | N2 ⚠️ | À vérifier |  |
 | 42 | Loire | [AD (Ligeo)](https://archives.loire.fr/archive/recherche/cadastre/n:133) | JPG (visionneuse) | N2 ⚠️ | À vérifier |  |

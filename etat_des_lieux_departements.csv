@@ -36,7 +36,7 @@ code,departement,niveau,verifie,source_type,source_url,formats,licence,licence_c
 36,Indre,N2,non,AD (Bach),http://www.archives36.fr/f/Cadastre/mosaique/,JPG (visionneuse),À vérifier,inconnue,
 37,Indre-et-Loire,N2,non,AD (Mnesys),https://archives.touraine.fr/search/form/0883f4b0-8c3d-427b-8618-d9e67239068b,ARK (visionneuse),À vérifier,inconnue,≈12 700 docs numérisés référencés FA (beaucoup d'E-dépôts communaux)
 38,Isère,N2,non,AD (Arkothèque),https://archivesenligne1.archives-isere.fr/cadastre,JPG (visionneuse),À vérifier,inconnue,
-39,Jura,N2,oui,AD (Mnesys),https://archives39.fr/search/form/0a4fae72-ee28-4663-ac8f-e4a4e89ebc68,ARK (visionneuse),Restrictive : rediffusion/modification interdites,fermee,≈8 800 docs numérisés référencés FA ; manifeste IIIF caché derrière la SPA ; licence bloquante pour overlay
+39,Jura,N2,oui,AD (Mnesys),https://archives39.fr/search/form/0a4fae72-ee28-4663-ac8f-e4a4e89ebc68,ARK (visionneuse),Licence Ouverte Etalab (accord écrit AD39 2026-09),ouverte,≈8 800 docs numérisés référencés FA ; manifeste IIIF caché derrière la SPA ; accord écrit de l'AD : Licence Ouverte Etalab sur les feuilles du cadastre → overlay autorisé
 40,Landes,N2,non,AD (Arkothèque),http://www.archives.landes.fr/arkotheque/consult_fonds/index.php?ref_fonds=1,JPG (visionneuse),À vérifier,inconnue,
 41,Loir-et-Cher,N2,non,AD (portail),http://archives.culture41.fr/archives/recherche/cadastre,JPG (visionneuse),À vérifier,inconnue,
 42,Loire,N2,non,AD (Ligeo),https://archives.loire.fr/archive/recherche/cadastre/n:133,JPG (visionneuse),À vérifier,inconnue,

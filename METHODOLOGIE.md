@@ -11,7 +11,7 @@ Voir aussi le suivi par département : [`to_do/README.md`](to_do/README.md).
 
 **La licence n'est PAS uniforme.** Elle conditionne le droit d'**overlay/géoréférencement**
 (= modifier + rediffuser l'image). On l'a vérifié : Seine-Saint-Denis = ouvert,
-Jura = restrictif. Donc **un contrôle par institution est obligatoire**.
+Jura = restrictif par défaut (levé depuis par accord écrit). Donc **un contrôle par institution est obligatoire**.
 
 **Source faisant foi : le manifeste IIIF.** La licence opérante est déclarée
 dans le manifeste (`license` / `rights` / `attribution`, ou un profil maison
@@ -34,7 +34,7 @@ Repères connus :
 | Institution | Licence | overlay |
 |---|---|---|
 | AD Seine-Saint-Denis (`service/34393`) | Licence Ouverte (Etalab) | ✅ |
-| AD du Jura | « ne pas diffuser/modifier sans accord écrit » | ❌ |
+| AD du Jura | CGU « ne pas diffuser/modifier sans accord écrit » → **accord écrit obtenu (2026-09) : Licence Ouverte Etalab sur les feuilles du cadastre** | ✅ |
 
 ---
 
