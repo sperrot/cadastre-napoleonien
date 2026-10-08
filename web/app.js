@@ -658,16 +658,19 @@ async function fetchDocuments(insee) {
  * Aucune annotation n'est stockée chez nous en V1 (cf. dump open-data Allmaps
  * pour un mirroring ultérieur si besoin de curation).
  * ------------------------------------------------------------------ */
-/* Lien éditeur : directement à l'étape Images ; à l'étape Georeference la
- * carte s'ouvre sur `bbox` (commune, sinon département) avec le Plan IGN v2,
- * qui trace les limites communales sans remplissage. L'éditeur n'accepte
- * qu'un fond (bg-preset OU bg-url) : pas de calque superposable sur OSM. */
+/* Lien éditeur : directement à l'étape Masque (1re image du manifeste). Le
+ * `bbox` (commune, sinon département) n'est appliqué à l'étape Georeference
+ * qu'une fois la « map » Allmaps créée, c.-à-d. le masque dessiné
+ * (apps/editor/…/views/Georeference.svelte : sans map → resetGcps(), carte
+ * sur le monde) — d'où l'entrée par le masque plutôt que par Images.
+ * Fond : Plan IGN v2, qui trace les limites communales sans remplissage ;
+ * l'éditeur n'accepte qu'un fond (bg-preset OU bg-url). */
 const ALLMAPS_BG_URL = ignWmts("GEOGRAPHICALGRIDSYSTEMS.PLANIGNV2", "image/png", "PM");
 const editorLink = (manifest, bbox) => {
   const p = new URLSearchParams({ url: manifest });
   if (bbox) p.set("bbox", bbox.map((n) => n.toFixed(6)).join(","));
   p.set("bg-url", ALLMAPS_BG_URL);
-  return `https://editor.allmaps.org/images?${p}`;
+  return `https://editor.allmaps.org/mask?${p}`;
 };
 
 // Emprise de cadrage pour l'éditeur : contour de la commune, sinon département
