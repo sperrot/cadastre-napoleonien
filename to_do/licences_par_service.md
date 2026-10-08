@@ -10,6 +10,7 @@ Le harvester (`resolve_licence`) renverra « À vérifier » : cette table fait 
 | `34471` | AD Val-d'Oise | 95 | ✅ OK (confirmée Sylvain) | true | CGU archives.valdoise.fr |
 | `33495` | AD Calvados | 14 | ✅ OK (confirmée Sylvain) | true | CGU archives.calvados.fr |
 | `34393` | AD Seine-Saint-Denis | 93 | ✅ Licence Ouverte (détectée au run pilote) | true | manifeste IIIF |
+| _à renseigner_ | AD Jura | 39 | ✅ Licence Ouverte Etalab — feuilles du cadastre (accord écrit AD39, 2026-09) | true | accord écrit (CGU par défaut restrictives) |
 
 > `overlay_ok = true` → autorise la rediffusion publique des images (georef).
 > À reverser dans le seed SQL (`licence`, `licence_overlay_ok`) en surcharge de

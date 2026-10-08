@@ -26,7 +26,21 @@ const ALLOWED = new Set([
   "saone-et-loire71.fr",                       // Saône-et-Loire (71) — opendata JPEG (http)
   "download.doubs.fr",                         // Doubs (25) — opendata JPEG
   "data.haute-garonne.fr",                     // Haute-Garonne (31) — opendata Opendatasoft (JPEG)
+  "archives39.fr",                             // Jura (39) — Mnesys, JPEG /ark:/36595/<ark>/<uuid>
 ]);
+
+// Cookies exigés par certains portails pour servir l'image (bandeau CGU Mnesys)
+const HOST_COOKIES = {
+  "archives39.fr": "license=true",
+};
+
+function headersFor(u, extra = {}) {
+  let host = "";
+  try { host = new URL(u).host; } catch {}
+  const h = { ...BROWSER_HEADERS, ...extra };
+  if (HOST_COOKIES[host]) h["Cookie"] = HOST_COOKIES[host];
+  return h;
+}
 
 const BROWSER_HEADERS = {
   "User-Agent":
@@ -94,7 +108,7 @@ function rewriteServices(node, map) {
 async function fetchJpegDimensions(url) {
   try {
     const r = await fetch(url, {
-      headers: { ...BROWSER_HEADERS, "Range": "bytes=0-65535" },
+      headers: headersFor(url, { "Range": "bytes=0-65535" }),
     });
     const buf = await r.arrayBuffer();
     const v   = new DataView(buf);
@@ -267,7 +281,7 @@ export default {
         // toute requête d'image → l'unique tuile, c'est le JPEG source
         let rr = null;
         for (const c of candidats) {
-          rr = await fetch(c, { headers: BROWSER_HEADERS });
+          rr = await fetch(c, { headers: headersFor(c) });
           if (rr.ok) break;
         }
         if (!rr || !rr.ok) return bad(502, "image source: " + (rr ? rr.status : "?"));
