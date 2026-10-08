@@ -64,20 +64,38 @@ function updateCommuneUrl(c) {
 const DEPTS_GEOJSON =
   "https://raw.githubusercontent.com/gregoiredavid/france-geojson/master/departements-version-simplifiee.geojson";
 
+// Emprise [ouest, sud, est, nord] d'une géométrie GeoJSON
+function geometryBbox(geometry) {
+  const b = [Infinity, Infinity, -Infinity, -Infinity];
+  eachCoord(geometry, ([lng, lat]) => {
+    b[0] = Math.min(b[0], lng); b[1] = Math.min(b[1], lat);
+    b[2] = Math.max(b[2], lng); b[3] = Math.max(b[3], lat);
+  });
+  return Number.isFinite(b[0]) ? b : null;
+}
+
+// Emprise d'un ou plusieurs départements (null si inconnus / hors ligne)
+let _deptsGeojson = null;
+async function deptsBbox(codes) {
+  try {
+    _deptsGeojson ||= fetch(DEPTS_GEOJSON).then((r) => (r.ok ? r.json() : null));
+    const feats = ((await _deptsGeojson)?.features || []).filter((f) =>
+      codes.includes(f.properties?.code)
+    );
+    if (!feats.length) return null;
+    return geometryBbox({ coordinates: feats.map((f) => f.geometry.coordinates) });
+  } catch (e) {
+    _deptsGeojson = null; // hors ligne : on retentera
+    return null;
+  }
+}
+
 // Cadre la carte sur un ou plusieurs départements (routes /<region> et /<region>/<dept>)
 async function fitDepts(codes) {
-  try {
-    const res = await fetch(DEPTS_GEOJSON);
-    if (!res.ok) return;
-    const feats = (await res.json()).features.filter((f) => codes.includes(f.properties?.code));
-    if (!feats.length) return;
-    const b = new maplibregl.LngLatBounds();
-    for (const f of feats) eachCoord(f.geometry, ([lng, lat]) => b.extend([lng, lat]));
-    showView("map");
-    map.fitBounds(b, { padding: 40, duration: 0 });
-  } catch (e) {
-    /* hors ligne → vue France par défaut */
-  }
+  const b = await deptsBbox(codes);
+  if (!b) return; // hors ligne → vue France par défaut
+  showView("map");
+  map.fitBounds(b, { padding: 40, duration: 0 });
 }
 
 // Au chargement : ouvre la vue désignée par l'URL (carte ou fiche GED)
@@ -640,8 +658,34 @@ async function fetchDocuments(insee) {
  * Aucune annotation n'est stockée chez nous en V1 (cf. dump open-data Allmaps
  * pour un mirroring ultérieur si besoin de curation).
  * ------------------------------------------------------------------ */
-const editorLink = (manifest) =>
-  `https://editor.allmaps.org/?url=${encodeURIComponent(manifest)}`;
+/* Lien éditeur : directement à l'étape Images ; à l'étape Georeference la
+ * carte s'ouvre sur `bbox` (commune, sinon département) avec le Plan IGN v2,
+ * qui trace les limites communales sans remplissage. L'éditeur n'accepte
+ * qu'un fond (bg-preset OU bg-url) : pas de calque superposable sur OSM. */
+const ALLMAPS_BG_URL = ignWmts("GEOGRAPHICALGRIDSYSTEMS.PLANIGNV2", "image/png", "PM");
+const editorLink = (manifest, bbox) => {
+  const p = new URLSearchParams({ url: manifest });
+  if (bbox) p.set("bbox", bbox.map((n) => n.toFixed(6)).join(","));
+  p.set("bg-url", ALLMAPS_BG_URL);
+  return `https://editor.allmaps.org/images?${p}`;
+};
+
+// Emprise de cadrage pour l'éditeur : contour de la commune, sinon département
+const _georefBbox = new Map();
+function georefBbox(insee) {
+  if (!insee) return Promise.resolve(null);
+  if (!_georefBbox.has(insee)) {
+    _georefBbox.set(
+      insee,
+      fetch(`${GEO_API}/${insee}?fields=contour`)
+        .then((r) => (r.ok ? r.json() : null))
+        .then((c) => (c?.contour ? geometryBbox(c.contour) : null))
+        .catch(() => null)
+        .then((b) => b || deptsBbox([String(insee).slice(0, 2)]))
+    );
+  }
+  return _georefBbox.get(insee);
+}
 const viewerLink = (annotationUrl) =>
   `https://viewer.allmaps.org/?url=${encodeURIComponent(annotationUrl)}`;
 
@@ -677,16 +721,18 @@ async function hydrateGeoref(root, fallbackInsee) {
     const manifest = block.dataset.manifest;
     const annotationUrl = await resolveAnnotation(manifest);
     if (!block.isConnected) return; // commune changée pendant le fetch
+    const insee = block.dataset.insee || fallbackInsee;
     if (!annotationUrl) {
+      const bbox = await georefBbox(insee);
+      if (!block.isConnected) return;
       block.innerHTML = `<a class="georef-btn" href="${escape(
-        editorLink(manifest)
+        editorLink(manifest, bbox)
       )}" target="_blank" rel="noopener">Géoréférencer ce plan ↗</a>`;
       continue;
     }
     // Plan calé : on renvoie vers NOTRE carte (l'overlay y est rendu par
     // @allmaps/maplibre), avec repli sur le viewer Allmaps si la commune
     // n'est pas résoluble en route locale.
-    const insee = block.dataset.insee || fallbackInsee;
     const local = insee ? communePath(insee) : null;
     block.innerHTML =
       `<span class="georef-badge">✓ géoréférencé</span>` +
