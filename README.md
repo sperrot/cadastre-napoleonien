@@ -211,3 +211,5 @@ voir [`ETAT_DES_LIEUX.md`](ETAT_DES_LIEUX.md) (données :
   JSON, rendu déformé côté navigateur, sans serveur de tuiles) + sections au
   zoom fort. Département Seine Saint Denis disponible (Rechercher Sevran,  Aulnay , Drancy, Villepinte ...)
 - **V1** Workflow de validation, couverture multi-départements, exports.
+- Géoréférencement automatique : évaluation de MaRE (non retenu en l'état) et
+  banc de test sur nos plans Allmaps → [`georef_auto/`](georef_auto/README.md).

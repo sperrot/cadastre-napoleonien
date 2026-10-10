@@ -1,0 +1,16 @@
+carte,n_gcp,transformation_allmaps,m_par_px,rotation_deg,rmse_similitude_m,rmse_affine_m,loo_affine_m,rmse_homographie_m,etendue_gcp_km,part_image_masque,largeur_px,hauteur_px,allmaps_id
+FRAD025_3P178_01.jpg,21,thinPlateSpline,0.85,0.1,11.0,10.6,12.5,10.4,2.9x5.1,0.16,12231,7732,258f6ed109ae27b5
+FRAD088_3NUM3_88116_3P5056_1.jpg,60,thinPlateSpline,1.672,0.6,21.0,21.0,22.1,20.7,10.1x7.9,0.14,12539,8223,c26b2cc241446bda
+FRAD025_3P122_01.jpg,49,polynomial,1.702,2.4,26.0,22.4,24.9,22.1,9.7x9.0,0.28,6399,7780,d5b9f30c24c0baeb
+FRAD025_3P623_01.jpg,5,polynomial,0.215,23.0,8.2,6.1,42.0,,1.8x0.7,0.51,12374,8148,140e7b2239d70ae1
+AD071_0362_3PA_07976_D.jpg,21,polynomial,0.845,-30.9,14.8,10.7,14.4,8.0,2.4x2.1,0.48,4326,3044,bc5c5914be984ad7
+FRAD025_3P80_01.jpg,42,polynomial,1.702,0.3,22.8,22.4,24.1,22.1,8.3x9.3,0.1,12252,8034,3b55c34b8af7d73a
+FRAD025_3P630_01.jpg,17,polynomial,0.852,59.7,25.9,25.5,31.9,25.4,7.4x6.9,0.32,12454,7729,c1edb1ecf469017e
+FRAD025_3P27_01.jpg,8,polynomial,0.859,0.2,31.1,25.0,43.7,13.3,4.1x3.2,0.16,12375,7782,e8b3151afc3abc7d
+FRAD088_3NUM3_88500_3P5440_1.jpg,41,polynomial,0.833,-0.8,14.1,13.8,14.7,13.4,6.6x5.3,0.34,12720,8245,61f192b21527751a
+FRAD095_3P_3290.jpg,42,polynomial,1.275,-14.0,17.1,14.1,15.3,12.4,3.4x3.6,0.21,4070,5241,9c415b1a945ec557
+AD093CA_2047W_0049_C.jpg,3,polynomial,1.296,-2.0,26.5,0.0,,,3.1x4.1,0.27,3784,5397,e679c9b32472a9a5
+AD093CA_2047W_0121_C.jpg,6,polynomial,0.683,0.2,4.5,4.4,19.2,4.1,1.6x1.3,0.5,7680,4947,63e92044763b459b
+FRAD088_3NUM3_88451_3P5391_1.jpg,9,polynomial,0.829,90.7,51.5,49.0,95.8,48.3,4.2x7.8,1.0,12529,7830,6bd7b1e39fcd1bb9
+AD093CA_2047W_0563_C.jpg,4,polynomial,1.12,-0.8,72.4,27.3,,,2.5x1.3,0.13,7319,5197,e8393951d4797da8
+AD093CA_2047W_0012_C.jpg,11,thinPlateSpline,1.279,91.3,104.9,68.9,101.4,70.6,3.1x5.7,0.34,7371,4251,4c0880dbfa9d1438
