@@ -297,6 +297,8 @@ def main():
         loo = loo_affine_rmse(m["px"], m["xy"])
         row["plancher_affine_m"] = round(loo, 1) if loo is not None else ""
         captured.clear()
+        for old in [*out_dir.glob(f"aligned_{m['id']}_*"), *out_dir.glob(f"*_{m['id']}.npy")]:
+            old.unlink()  # pas de relecture d'un résultat d'une exécution précédente
         t0 = time.time()
         try:
             img_path, w = fetch_image(m, args.width, out_dir / "images")
