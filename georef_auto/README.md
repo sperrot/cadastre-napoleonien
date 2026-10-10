@@ -1,4 +1,13 @@
-# Géoréférencement automatique — évaluation de MaRE
+# Géoréférencement automatique
+
+Deux approches évaluées sur nos plans déjà calés dans Allmaps :
+
+1. [MaRE](#évaluation-de-mare) (recalage de l'hydrographie sur OSM) : **non retenu**.
+2. [Recalage par contour communal](#recalage-par-contour-communal) (contour du tableau
+   d'assemblage ↔ contour IGN de la commune) : **prometteur**, 10 plans sur 15 calés
+   automatiquement à moins de 50 m à partir du contour, sans aucun faux positif.
+
+## Évaluation de MaRE
 
 Question : le dépôt [luftj/MaRE](https://github.com/luftj/MaRE) (thèse HCU Hamburg,
 2023) peut-il géoréférencer automatiquement les plans du cadastre napoléonien de
@@ -10,7 +19,7 @@ reprendre l'idée (recaler l'hydrographie du plan sur OSM), mais pas l'utiliser
 tel quel. Le détail ci-dessous, puis le banc de test pour le vérifier sur nos
 vrais plans.
 
-## Ce que fait MaRE
+### Ce que fait MaRE
 
 1. Segmente le **bleu** du plan (cours d'eau, étangs).
 2. Cherche la bonne feuille dans un **tableau d'assemblage connu d'avance**
@@ -19,7 +28,7 @@ vrais plans.
    rendus OSM de chaque feuille, puis vérifie par RANSAC (similitude).
 3. Affine le recalage par ECC (affine) et écrit l'image recalée + un `.wld`.
 
-## Pourquoi ça ne colle pas à nos plans
+### Pourquoi ça ne colle pas à nos plans
 
 | # | Point | Constat |
 |---|---|---|
@@ -29,9 +38,9 @@ vrais plans.
 | 4 | **Peu de signal** | Seul le bleu sert. Nos tableaux d'assemblage n'occupent que 10 à 50 % de l'image (médiane ≈ 0,3, le reste est marge, cartouche et légende). Beaucoup de communes ont peu d'eau, et les feuilles de section (1/1 250 – 1/2 500) n'en montrent presque pas. |
 | 5 | **Licence et maintenance** | Pas de licence (« get in touch » : on ne peut pas intégrer le code sans accord de l'auteur). `simple_cb.py` est un code tiers non licencié. Dernier commit en août 2023. Incompatible avec Python ≥ 3.12 (`imp`), OpenCV 5 (`KAZE_create`) et scikit-image récent (`ransac`) : contourné dans notre banc sans toucher à MaRE. |
 
-## Ce qui a été testé ici
+### Ce qui a été testé ici
 
-### 1. Nos 15 géoréférencements Allmaps (données réelles)
+#### 1. Nos 15 géoréférencements Allmaps (données réelles)
 
 `analyse_gcp_allmaps.py` lit `web/annotations/collection.json` et ajuste les GCP
 (pixel → Lambert-93). Résultat complet : [`gcp_allmaps_analyse.csv`](gcp_allmaps_analyse.csv).
@@ -62,7 +71,7 @@ vrais plans.
   moins de 10 GCP, peu fiables.
 - **Part image utile** : surface du masque Allmaps / surface de l'image.
 
-### 2. MaRE sur un plan synthétique (hors réseau)
+#### 2. MaRE sur un plan synthétique (hors réseau)
 
 `test_synthetique.py` fabrique un plan dont la vérité est connue (rivières bleues,
 bâti rouge, traits noirs, 3 m/px), avec une rotation choisie, puis lance MaRE
@@ -86,7 +95,7 @@ Emprise « commune » (emprise des GCP + 30 %, cas réaliste) : 132 m (sortie
 MaRE) contre 4,5 m (RANSAC recomposé) à 0°, et 337 m contre 1,5 m à 10°. Le mode
 par défaut `both` (ECC) donne 584 m et 1,8 km.
 
-### 3. MaRE sur nos vrais plans : **pas exécuté ici**
+#### 3. MaRE sur nos vrais plans : **pas exécuté ici**
 
 L'environnement d'exécution n'a pas accès aux serveurs IIIF des AD ni à
 Overpass (politique réseau). Le banc `test_mare.py` est prêt et validé de bout
@@ -121,15 +130,117 @@ Colonnes de `sortie_mare/resultats_mare.csv` :
 vide ou bruité, la segmentation (`segmentation_steps` dans le `config.py` de
 MaRE) n'est pas adaptée aux lavis du cadastre.
 
-## Recommandation
+### Recommandation
 
 - **Ne pas adopter MaRE** comme outil de géoréférencement du projet, pour les
   raisons ci-dessus, et parce que sans licence on ne peut pas l'intégrer.
 - **Allmaps reste la voie de production.**
-- Piste plus prometteuse pour pré-placer les plans automatiquement : partir de ce
-  qu'on sait déjà, **la commune**. Le tableau d'assemblage trace la limite
-  communale, souvent proche de la limite actuelle (geo.api.gouv.fr). Un
-  recalage de forme invariant en rotation (contour du TA contre contour actuel)
-  donnerait une position initiale, à affiner ensuite dans Allmaps. Le banc
-  ci-dessus (vérité terrain + métriques) peut servir à évaluer cette piste de
-  la même façon.
+- Piste retenue : le recalage par contour communal, ci-dessous.
+
+---
+
+## Recalage par contour communal
+
+On connaît la commune de chaque plan. Le tableau d'assemblage (TA) trace sa limite, souvent
+inchangée depuis 1830. On recale donc **l'enveloppe de la commune extraite du TA** sur le
+**contour IGN actuel** de la même commune (ADMIN EXPRESS), sans OSM.
+
+### Méthode
+
+| Étape | Module | Principe |
+|---|---|---|
+| 1. Enveloppe | [`enveloppe.py`](enveloppe.py) | Masque « encre » (plus sombre ou plus saturé que le papier local). Effacement du cadre (longs traits droits), des marges et des encadrés rectangulaires (cartouche). Région de la commune par remplissage des zones fermées (`contour`) ou par densité d'encre (`densite`). Ouverture morphologique contre les routes sortantes, puis plus grande composante. Mode `auto` : essaie les deux et garde le meilleur recalage. |
+| 2. Recalage | [`recalage_contour.py`](recalage_contour.py) | Initialisation invariante (centroïdes, rapport des aires, balayage de la rotation sur 360°). Puis ICP + **RANSAC** (similitude) avec tolérance décroissante : les morceaux qui ne collent pas (route, cartouche, limite modifiée) sortent comme aberrants. |
+| 3. Confiance | idem | Part du contour à moins de la tolérance du contour IGN : **calé** ≥ 0,6, **probable** ≥ 0,45, sinon **à vérifier**. |
+| Contours IGN | [`contours_ign.py`](contours_ign.py) | Géoplateforme WFS ADMIN EXPRESS COG (production, `--contours wfs`, couche à confirmer au premier appel réel) ou [france-geojson](https://github.com/gregoiredavid/france-geojson) (ADMIN EXPRESS COG 2018 simplifié, utilisé pour les essais ci-dessous). |
+
+### Vérification préalable : contour de 1830 ≈ contour IGN ?
+
+Masque Allmaps (limite tracée sur le TA, géoréférencée par les GCP) comparé au contour
+IGN : **IoU de 0,94 à 0,98 pour 10 plans sur 15** (Doubs, Vosges, Saône-et-Loire,
+Val-d'Oise), et 0,81–0,87 en Seine-Saint-Denis (urbanisation, limites retouchées).
+Les autres plans n'ont pas de contour communal exploitable dans leur masque :
+plan partiel (3P623), pas de masque (Senones), calage à 3 GCP douteux (Drancy 0049).
+
+### Résultats
+
+**Étape 2 sur données réelles** (`--source masque` : contour = masque Allmaps, erreur
+mesurée aux GCP Allmaps). Détail : [`resultats_contour_masques.csv`](resultats_contour_masques.csv).
+
+| plan | commune | rotation vraie | rotation estimée | inliers | statut | erreur médiane (m) | plancher affine (m) |
+|---|---|---|---|---|---|---|---|
+| FRAD025_3P178_01 | Courvières | 0° | 0° | 0,66 | calé | 14 | 12 |
+| FRAD088_…88116_3P5056_1 | Cornimont | 1° | 1° | 1,00 | calé | 21 | 22 |
+| FRAD025_3P122_01 | Chapelle-des-Bois | 2° | 3° | 0,94 | calé | 29 | 25 |
+| FRAD025_3P623_01 | Villeneuve-d'Amont | 23° | 22° | 0,40 | à vérifier | 1 878 | 42 |
+| AD071_0362_3PA_07976_D | Pruzilly | −31° | −30° | 0,69 | calé | 28 | 14 |
+| FRAD025_3P80_01 | Boujailles | 1° | 0° | 0,88 | calé | 26 | 24 |
+| FRAD025_3P630_01 | Villers-sous-Chalamont | 60° | 60° | 0,82 | calé | 42 | 32 |
+| FRAD025_3P27_01 | Arc-sous-Montenot | 0° | 0° | 0,78 | calé | 48 | 44 |
+| FRAD088_…88500_3P5440_1 | Ventron | −1° | −1° | 1,00 | calé | 23 | 15 |
+| FRAD095_3P_3290 | Villiers-le-Bel | −15° | −14° | 0,84 | calé | 21 | 15 |
+| AD093CA_2047W_0049_C | Drancy | 0° | −103° | 0,30 | à vérifier | 3 015 | — |
+| AD093CA_2047W_0121_C | Drancy | 1° | 1° | 0,73 | calé | 17 | 19 |
+| FRAD088_…88451_3P5391_1 | Senones | 91° | −60° | 0,28 | à vérifier | 4 862 | 96 |
+| AD093CA_2047W_0563_C | Sevran | −2° | 4° | 0,40 | à vérifier | 136 | — |
+| AD093CA_2047W_0012_C | Aulnay-sous-Bois | 89° | 91° | 0,66 | calé | 91 | 101 |
+
+- **11 calés, dont 10 à moins de 50 m**, à une erreur comparable au plancher affine
+  (la précision de la saisie Allmaps elle-même). Rotations de 60° et 90° retrouvées.
+- Les 4 « à vérifier » sont exactement les plans sans contour communal utilisable : **le
+  statut de confiance repère les échecs**.
+
+**Robustesse (étape 3 simulée sur les contours réels)** :
+
+| essai | calé | probable | à vérifier | faux positifs (calé > 100 m) |
+|---|---|---|---|---|
+| masques bruts | 11 | 0 | 4 | 0 |
+| plan tourné au hasard (`--rotation-aleatoire`) | 11 | 0 | 4 | 0 |
+| + 2 routes sortantes (`--parasites routes`) | 9 | 2 | 4 | 0 |
+| + cartouche collé (`--parasites cartouche`) | 9 | 2 | 4 | 0 |
+| + morceau de commune voisine (`--parasites voisine`) | 9 | 2 | 4 | 0 |
+| les trois à la fois (IoU contour ≈ 0,8) | 5 | 5 | 5 | 0 |
+
+Avec les trois défauts cumulés, les plans calés restent à 22–33 m. Le RANSAC écarte les
+parasites, mais la confiance baisse et des plans passent en « probable » ou « à vérifier ».
+
+**Étapes 1+2 sur TA synthétiques** (`--source synthetique` : TA dessiné depuis le
+contour IGN, avec liseré, limite tiretée, sections, routes qui traversent le cadre,
+noms de communes voisines, titre, cartouche, flèche du nord, double cadre) :
+**15/15 calés, erreur médiane 18 m (max 38 m), IoU enveloppe médiane 0,97**, aussi bien
+avec la rotation réelle de chaque plan qu'avec une rotation aléatoire. Ce sont des
+images idéalisées : elles valident la chaîne, pas le comportement sur de vrais TA.
+
+### Limites connues
+
+- **Limites administratives modifiées** (fusion, commune nouvelle, échange de
+  territoire) : on recale sur un contour qui n'est pas celui de 1830. Le RANSAC tolère un
+  morceau différent ; au-delà, le plan passe en « à vérifier ». Communes nouvelles à
+  traiter avec les communes déléguées (pas encore fait).
+- **Feuilles de section** : elles ne montrent qu'une partie de la commune, la méthode
+  ne s'applique qu'aux tableaux d'assemblage (cas de 3P623).
+- **Précision** : modèle similitude (l'option `--modele affine` n'apporte rien sur nos
+  plans). Le résultat est un pré-calage à 15–50 m, à affiner dans Allmaps.
+- **Vrais TA non testés ici** (pas d'accès aux serveurs d'archives depuis
+  l'environnement de travail). C'est l'étape 1 qui reste à valider.
+
+### À lancer en local : étape 1 sur les vraies images
+
+```bash
+pip install -r requirements-mare.txt   # numpy, opencv, pyproj, scikit-image, requests suffisent
+python banc_contour.py --source image --out sortie_contour
+```
+
+Le banc télécharge chaque TA en IIIF (2000 px), extrait l'enveloppe, recale et mesure
+l'erreur aux GCP Allmaps. À regarder :
+
+- `sortie_contour/resultats_contour.csv` : colonnes `iou_enveloppe` (enveloppe extraite
+  contre masque Allmaps), `statut`, `erreur_mediane_m`, `methode` (contour/densite) ;
+- `sortie_contour/debug/<id>_contour.jpg` et `<id>_densite.jpg` : encre détectée
+  (rouge) et enveloppe retenue (bleu). Si l'enveloppe attrape le cadre, un cartouche ou
+  rate la limite, c'est là qu'on le voit, pour ajuster `enveloppe.py`.
+
+Autres options : `--contours wfs` (contours IGN à jour), `--methode contour|densite`,
+`--only <ids Allmaps>`. Hors réseau : `--source masque` (étape 2) et
+`--source synthetique` (étapes 1+2), avec `--rotation-aleatoire` et
+`--parasites routes,cartouche,voisine`.

@@ -41,3 +41,5 @@ harvest/ligeo/depot/**/arks*.tsv
 # Sorties du banc de test MaRE (georef_auto/)
 georef_auto/sortie_mare*/
 georef_auto/synth*/
+georef_auto/sortie_contour*/
+georef_auto/cache_contours/
