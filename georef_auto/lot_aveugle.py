@@ -97,63 +97,78 @@ COLS = ["dept", "insee", "commune", "cote", "statut", "contraste", "ecart_2e", "
         "m_par_px_plein", "echelle_deduite", "largeur_px", "duree_s", "pose_plein_l93", "image_url", "apercu"]
 
 
+def reglages(args):
+    """Paramètres de recaler_image passés en ligne de commande."""
+    return dict(pas_angle=args.pas_angle, diam_min=args.diam_min, saturation=args.saturation, debord=args.debord)
+
+
+def traiter_un(d, args, out):
+    """Recale un TA (dict du catalogue) et renvoie la ligne du CSV."""
+    src = Contours(args.contours, HERE / "sortie_chanfrein/cache_contours")      # contour à poser
+    denoms = [int(x) for x in args.denominateurs.split(",")]
+    row = dict(dept=args.dept, **d)
+    t0 = time.time()
+    try:
+        m = dict(id=f"{args.dept}_{d['insee']}", service=WORKER + quote(d["image_url"], safe=""))
+        path, w = fetch_image(m, 2000, out / "images")
+        img = cv2.imdecode(np.fromfile(str(path), dtype=np.uint8), cv2.IMREAD_COLOR)
+        rings = src.contour(d["insee"])
+        # échelles candidates en m/px de l'image 2000 px : la pleine résolution est inconnue
+        # ici (pas de manifeste lu) -> on la lit dans info.json
+        full_w = largeur_pleine(m["service"]) or w
+        k = full_w / w
+        ech = [dd * 0.0254 / args.dpi * j * k for dd in denoms for j in (0.97, 1.0, 1.03)]
+        r = recaler_image(img, rings, ech, **reglages(args))
+        if r is None:
+            row["statut"] = "aucune pose"
+        else:
+            mpx = r["m_par_px"] / k
+            M = r["M"] @ np.diag([1 / k, 1 / k, 1])
+            row.update(statut=r["statut"], contraste=round(r["contraste"], 2), ecart_2e=round(r["ecart_2e"], 2),
+                       couverture=round(r["couverture"], 2), angle_deg=round(r["angle_deg"], 1),
+                       m_par_px_plein=round(mpx, 3), echelle_deduite=int(round(mpx / 0.0254 * args.dpi, -2)),
+                       largeur_px=full_w, pose_plein_l93=json.dumps(np.round(M[:2], 6).tolist()))
+            ap = f"apercus/{args.dept}_{d['insee']}.jpg"
+            apercu(img, r["M"], rings, r["statut"],
+                   f"{d['commune']} ({d['insee']})  {r['statut']}  ecart {r['ecart_2e']:.2f}  1/{row['echelle_deduite']}",
+                   out / ap)
+            row["apercu"] = ap
+    except Exception as ex:  # noqa: BLE001
+        row["statut"] = f"erreur : {type(ex).__name__}: {ex}"[:160]
+    row["duree_s"] = round(time.time() - t0, 1)
+    print({k_: row.get(k_) for k_ in ("insee", "commune", "statut", "ecart_2e", "echelle_deduite", "duree_s")}, flush=True)
+    return row
+
+
 def traiter(args):
     out = Path(args.out)
     (out / "apercus").mkdir(parents=True, exist_ok=True)
     cont = Contours("france-geojson", HERE / "sortie_contour/cache_contours")   # noms -> INSEE
-    src = Contours(args.contours, HERE / "sortie_chanfrein/cache_contours")      # contour à poser
     cat = catalogue(args.dept, cont)
     exclus = set(args.exclure.split(",")) if args.exclure else set()
     cat = [c for c in cat if c["insee"] not in exclus]
     rng = np.random.default_rng(args.seed)
     choix = [cat[i] for i in rng.permutation(len(cat))[:args.n]]
+    if args.insee:
+        voulus = args.insee.split(",")
+        choix = [c for c in cat if c["insee"] in voulus]
     print(f"{args.dept} : {len(cat)} TA au catalogue, {len(choix)} tirés", flush=True)
-    denoms = [int(d) for d in args.denominateurs.split(",")]
     fichier = out / f"lot_{args.dept}.csv"
     deja = {}
     if fichier.exists():
         deja = {r["insee"]: r for r in csv.DictReader(open(fichier, encoding="utf-8"))}
-    rows = []
-    for d in choix:
-        if d["insee"] in deja and deja[d["insee"]].get("statut"):
-            rows.append(deja[d["insee"]])
-            continue
-        row = dict(dept=args.dept, **d)
-        t0 = time.time()
-        try:
-            m = dict(id=f"{args.dept}_{d['insee']}", service=WORKER + quote(d["image_url"], safe=""))
-            path, w = fetch_image(m, 2000, out / "images")
-            img = cv2.imdecode(np.fromfile(str(path), dtype=np.uint8), cv2.IMREAD_COLOR)
-            rings = src.contour(d["insee"])
-            # échelles candidates en m/px de l'image 2000 px : la pleine résolution est inconnue
-            # ici (pas de manifeste lu) -> on la lit dans info.json
-            full_w = largeur_pleine(m["service"]) or w
-            k = full_w / w
-            ech = [dd * 0.0254 / args.dpi * j * k for dd in denoms for j in (0.97, 1.0, 1.03)]
-            r = recaler_image(img, rings, ech, pas_angle=args.pas_angle)
-            if r is None:
-                row["statut"] = "aucune pose"
-            else:
-                mpx = r["m_par_px"] / k
-                M = r["M"] @ np.diag([1 / k, 1 / k, 1])
-                row.update(statut=r["statut"], contraste=round(r["contraste"], 2), ecart_2e=round(r["ecart_2e"], 2),
-                           couverture=round(r["couverture"], 2), angle_deg=round(r["angle_deg"], 1),
-                           m_par_px_plein=round(mpx, 3), echelle_deduite=int(round(mpx / 0.0254 * args.dpi, -2)),
-                           largeur_px=full_w, pose_plein_l93=json.dumps(np.round(M[:2], 6).tolist()))
-                ap = f"apercus/{args.dept}_{d['insee']}.jpg"
-                apercu(img, r["M"], rings, r["statut"],
-                       f"{d['commune']} ({d['insee']})  {r['statut']}  ecart {r['ecart_2e']:.2f}  1/{row['echelle_deduite']}",
-                       out / ap)
-                row["apercu"] = ap
-        except Exception as ex:  # noqa: BLE001
-            row["statut"] = f"erreur : {type(ex).__name__}: {ex}"[:160]
-        row["duree_s"] = round(time.time() - t0, 1)
-        rows.append(row)
-        print({k_: row.get(k_) for k_ in ("insee", "commune", "statut", "ecart_2e", "echelle_deduite", "duree_s")}, flush=True)
-        with open(fichier, "w", newline="", encoding="utf-8") as f:
-            wr = csv.DictWriter(f, COLS, extrasaction="ignore")
-            wr.writeheader()
-            wr.writerows(rows)
+    a_faire = [d for d in choix if not (d["insee"] in deja and deja[d["insee"]].get("statut"))]
+    if args.jobs > 1:
+        from concurrent.futures import ProcessPoolExecutor
+        with ProcessPoolExecutor(args.jobs) as ex:
+            faits = dict(zip([d["insee"] for d in a_faire], ex.map(traiter_un, a_faire, [args] * len(a_faire), [out] * len(a_faire))))
+    else:
+        faits = {d["insee"]: traiter_un(d, args, out) for d in a_faire}
+    rows = [faits.get(d["insee"]) or deja[d["insee"]] for d in choix]
+    with open(fichier, "w", newline="", encoding="utf-8") as f:
+        wr = csv.DictWriter(f, COLS, extrasaction="ignore")
+        wr.writeheader()
+        wr.writerows(rows)
     for s in ("calé", "probable", "à vérifier"):
         print(f"{s:>10} : {sum(r.get('statut') == s for r in rows)}/{len(rows)}")
 
@@ -254,6 +269,11 @@ def main():
     ap.add_argument("--dpi", type=float, default=300)
     ap.add_argument("--denominateurs", default="5000,10000,20000")
     ap.add_argument("--pas-angle", type=float, default=2.0)
+    ap.add_argument("--diam-min", type=float, default=0.10, help="lot initial : 0.25")
+    ap.add_argument("--saturation", type=float, default=0.3, help="0 = carte de traits brute (lot initial)")
+    ap.add_argument("--debord", type=float, default=0.1, help="lot initial : 0")
+    ap.add_argument("--insee", default="", help="ne traiter que ces INSEE (liste, pris dans tout le catalogue)")
+    ap.add_argument("--jobs", type=int, default=1, help="plans traités en parallèle")
     ap.add_argument("--exclure", default="", help="INSEE à écarter (déjà en vérité terrain)")
     ap.add_argument("--out", default="sortie_lot")
     ap.add_argument("--contours", default="pci", help="pci (Parcellaire Express) | wfs | france-geojson")

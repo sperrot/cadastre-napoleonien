@@ -59,6 +59,7 @@ def main():
     ap.add_argument("--only", default="")
     ap.add_argument("--width", type=int, default=2000)
     ap.add_argument("--pas-angle", type=float, default=2.0)
+    ap.add_argument("--paliers", default="8,5,3", help="tolérances successives de l'affinage (px à 2000 px)")
     ap.add_argument("--insee", default="", help="forçage id=insee,... quand le centre des GCP tombe dans une "
                     "voisine (en production, l'INSEE vient de la table document)")
     args = ap.parse_args()
@@ -87,7 +88,7 @@ def main():
             k = m["full_w"] / w
             denoms = [int(d) for d in args.denominateurs.split(",")]
             ech = [e * k for e in echelles_candidates(args.echelle, m, args.dpi, denoms)]
-            r = recaler_image(img, rings, ech, pas_angle=args.pas_angle, debug=out / "debug" / f"{m['id']}.jpg")
+            r = recaler_image(img, rings, ech, pas_angle=args.pas_angle, paliers=[float(x) for x in args.paliers.split(",")], debug=out / "debug" / f"{m['id']}.jpg")
             if r is None:
                 row["statut"] = "aucune pose"
             else:

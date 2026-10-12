@@ -12,6 +12,8 @@ tireté suffit s'il est au bon endroit.
    moyenne locale (une zone uniformément encrée — texte, bord du scanner — ne vaut rien).
 2. Recherche exhaustive, image réduite : échelles candidates x rotations (pas 2°), translation
    par corrélation (cv2.matchTemplate, FFT). Score = moyenne de la carte le long du contour.
+   La carte est saturée (un trait pâle pèse autant que le cartouche ou le lettrage noirs) et
+   le contour peut déborder de l'image (commune actuelle plus grande que celle du TA).
 3. Affinage des meilleures poses distinctes, image pleine : ICP modèle -> scène (point IGN ->
    pixel d'encre le plus proche) + RANSAC similitude, tolérance décroissante.
 4. Confiance : couverture (part du contour IGN à moins de τ d'un trait) de la meilleure pose,
@@ -88,10 +90,14 @@ def _distincts(cands, n, d_ang, d_pos):
     return out
 
 
-def recherche_grossiere(F, rings_c, echelles_px, pas_angle=2.0, diam_min=0.25):
+def recherche_grossiere(F, rings_c, echelles_px, pas_angle=2.0, diam_min=0.25, debord=0.0):
     """F : carte de proximité (image réduite). rings_c : anneaux L93 centrés.
-    echelles_px : px (image réduite) par mètre. Renvoie les candidats triés
-    (score, angle_deg, echelle, t(2,))."""
+    echelles_px : px (image réduite) par mètre. debord : part de la taille de l'image dont le
+    contour peut dépasser de chaque côté (limite actuelle plus grande que celle du TA, feuille
+    rognée). Renvoie les candidats triés (score, angle_deg, echelle, t(2,))."""
+    pad = int(round(debord * max(F.shape)))
+    if pad:
+        F = cv2.copyMakeBorder(F, pad, pad, pad, pad, cv2.BORDER_CONSTANT, value=0)
     H, W = F.shape
     pts = np.vstack(rings_c)
     cands = []
@@ -102,14 +108,14 @@ def recherche_grossiere(F, rings_c, echelles_px, pas_angle=2.0, diam_min=0.25):
             allq = np.vstack(q)
             lo, hi = allq.min(0), allq.max(0)
             tw, th_ = int(np.ceil(hi[0] - lo[0])) + 3, int(np.ceil(hi[1] - lo[1])) + 3
-            if tw >= W or th_ >= H or max(tw, th_) < diam_min * min(W, H):
+            if tw >= W or th_ >= H or max(tw, th_) < diam_min * min(W - 2 * pad, H - 2 * pad):
                 continue
             T = np.zeros((th_, tw), np.float32)
             cv2.polylines(T, [np.round(r - lo + 1).astype(np.int32) for r in q], True, 1.0, 1)
             n = T.sum()
             res = cv2.matchTemplate(F, T, cv2.TM_CCORR)
             _, mx, _, loc = cv2.minMaxLoc(res)
-            t = np.array(loc, float) - lo + 1
+            t = np.array(loc, float) - lo + 1 - pad
             cands.append((mx / n, a, s, t))
     del pts
     cands.sort(key=lambda c: -c[0])
@@ -180,9 +186,13 @@ def contraste(M, G, dist, tau, decalage):
 
 
 def recaler_image(img, anneaux_l93, m_par_px, pas_angle=2.0, largeur_grossiere=800,
-                  n_hyp=12, sigma=1.5, diam_min=0.25, seuil_trait=0.15, seuils=(0.15, 0.10), debug=None):
+                  n_hyp=12, sigma=1.5, diam_min=0.10, seuil_trait=0.15, seuils=(0.15, 0.10),
+                  saturation=0.3, debord=0.1, paliers=(8, 5, 3), debug=None):
     """img : BGR. anneaux_l93 : contour IGN. m_par_px : échelles candidates (mètres par pixel de
-    img). Renvoie dict(M pixel->L93 3x3, couverture, z, ecart_2e, angle_deg, m_par_px, statut)."""
+    img). diam_min : plus grande dimension minimale du contour posé (part du petit côté de
+    l'image). saturation : force de trait au-delà de laquelle un trait compte plein dans la
+    recherche grossière (0 = carte brute). debord : voir recherche_grossiere.
+    Renvoie dict(M pixel->L93 3x3, couverture, z, ecart_2e, angle_deg, m_par_px, statut)."""
     rings = [np.asarray(r, float) for r in anneaux_l93]
     c = np.vstack(rings).mean(0)
     rings_c = [r - c for r in rings]
@@ -192,9 +202,12 @@ def recaler_image(img, anneaux_l93, m_par_px, pas_angle=2.0, largeur_grossiere=8
     # 1-2. recherche grossière
     f = largeur_grossiere / W0
     traits = carte_traits(img)
-    F = carte_proximite(reduire_max(traits, largeur_grossiere), sigma=sigma, fenetre=largeur_grossiere / 20)
+    # un trait pâle (liseré rose) au bon endroit doit peser autant que le cartouche ou le
+    # lettrage noirs : sans saturation, ceux-ci attirent toutes les poses
+    tg = np.minimum(traits / saturation, 1).astype(np.float32) if saturation else traits
+    F = carte_proximite(reduire_max(tg, largeur_grossiere), sigma=sigma, fenetre=largeur_grossiere / 20)
     ech_s = [f / m for m in m_par_px]             # px réduits par mètre
-    cands = recherche_grossiere(F, rings_c, ech_s, pas_angle, diam_min)
+    cands = recherche_grossiere(F, rings_c, ech_s, pas_angle, diam_min, debord)
     if not cands:
         return None
     diam = np.ptp(np.vstack(rings_c), axis=0).max()
@@ -206,7 +219,7 @@ def recaler_image(img, anneaux_l93, m_par_px, pas_angle=2.0, largeur_grossiere=8
     G = np.vstack([reechantillonner(r, pas=perim / 3000) for r in rings_c])
     rng = np.random.default_rng(0)
     k = W0 / 2000
-    taus = [t * k for t in (8, 5, 3)]
+    taus = [t * k for t in paliers]
     tau_f = taus[-1]
     resultats = []
     for sc, a, s, t in retenus:
