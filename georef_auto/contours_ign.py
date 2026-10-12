@@ -1,10 +1,11 @@
 """Contours communaux IGN (ADMIN EXPRESS), en Lambert-93, avec cache disque.
 
 Sources :
-- "wfs" : Géoplateforme IGN, ADMIN EXPRESS COG à jour (production). Couche et champ
-  configurables (WFS_TYPENAME, WFS_CHAMP_INSEE) : à confirmer à la première exécution réelle.
+- "pci" : Géoplateforme IGN, limite communale du Parcellaire Express (cadastre actuel, la
+  même lignée que le napoléonien ; ~800 sommets pour Courvières). Source recommandée.
+- "wfs" : Géoplateforme IGN, ADMIN EXPRESS COG à jour (~200 sommets pour Courvières).
 - "france-geojson" : github.com/gregoiredavid/france-geojson = ADMIN EXPRESS COG 2018
-  simplifié (visvalingam 25 %). Sert au banc et au développement hors Géoplateforme.
+  simplifié (visvalingam 25 %, ~50 sommets). Sert à trouver la commune d'un point (banc).
 - chemin d'un fichier GeoJSON local (propriété "code" ou "insee_com" + géométrie WGS84).
 
 Un contour est renvoyé comme liste d'anneaux extérieurs (np.ndarray Nx2, mètres L93).
@@ -17,8 +18,8 @@ from pathlib import Path
 import numpy as np
 
 WFS_URL = "https://data.geopf.fr/wfs/ows"
-WFS_TYPENAME = "ADMINEXPRESS-COG.LATEST:commune"
-WFS_CHAMP_INSEE = "insee_com"
+WFS_COUCHES = {"wfs": "ADMINEXPRESS-COG.LATEST:commune", "pci": "CADASTRALPARCELS.PARCELLAIRE_EXPRESS:commune"}
+WFS_CHAMP_INSEE = "code_insee"   # vérifié sur les deux couches le 2026-10-12
 FG_RAW = "https://raw.githubusercontent.com/gregoiredavid/france-geojson/master"
 UA = {"User-Agent": "Mozilla/5.0 (cadastre-napoleonien georef_auto)"}
 
@@ -90,12 +91,12 @@ class Contours:
 
     # ---------------------------------------------------------------------- public
     def contour(self, insee):
-        if self.source == "wfs":
+        if self.source in WFS_COUCHES:
             params = {"service": "WFS", "version": "2.0.0", "request": "GetFeature",
-                      "typeNames": WFS_TYPENAME, "outputFormat": "application/json",
+                      "typeNames": WFS_COUCHES[self.source], "outputFormat": "application/json",
                       "srsName": "EPSG:2154",  # évite l'ambiguïté d'ordre lat/lon du WFS 2.0
                       "cql_filter": f"{WFS_CHAMP_INSEE}='{insee}'"}
-            gj = _get_json(WFS_URL, self.cache / f"wfs_{insee}.geojson", params)
+            gj = _get_json(WFS_URL, self.cache / f"{self.source}_{insee}.geojson", params)
             feats = gj.get("features", [])
             if feats:
                 return [r for f in feats for r in anneaux(f["geometry"], projeter=False)]

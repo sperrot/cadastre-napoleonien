@@ -7,8 +7,9 @@ Trois approches évaluées sur nos plans déjà calés dans Allmaps :
    tableau d'assemblage ↔ contour IGN) : l'étape 2 marche sur les masques Allmaps, mais
    **l'extraction de l'enveloppe échoue sur les vraies images (0/15)**. Abandonné.
 3. [Recalage direct sur les traits](#recalage-direct-sur-les-traits) (contour IGN posé sur
-   l'encre du TA, sans extraction) : **retenu**. À échelle connue, 13 plans sur 17 calés à
-   16–54 m ; avec les échelles standard du fonds, 7 Doubs/Vosges calés, aucun faux positif.
+   l'encre du TA, sans extraction) : **retenu**. Avec la limite communale du **Parcellaire
+   Express** et les échelles du fonds : 11/11 TA Doubs, Vosges, Saône-et-Loire, Jura calés à
+   7–40 m (au niveau de la précision de nos saisies Allmaps), aucun faux positif.
 
 ## Évaluation de MaRE
 
@@ -326,3 +327,29 @@ python banc_chanfrein.py --collection allmaps_jura.json --images sortie_chanfrei
 ```
 
 Images de contrôle : `sortie_chanfrein*/debug/<id>.jpg` (traits en rouge, contour IGN posé en bleu).
+
+### Contour de référence : Parcellaire Express, pas france-geojson
+
+Les essais ci-dessus utilisaient france-geojson (ADMIN EXPRESS 2018 simplifié, 53 sommets pour
+Courvières). La limite communale du **Parcellaire Express** (cadastre actuel, WFS Géoplateforme
+`CADASTRALPARCELS.PARCELLAIRE_EXPRESS:commune`, champ `code_insee`) en a 788 et descend de la
+même lignée que le plan napoléonien. `--contours pci` :
+[`resultats_chanfrein_pci_oracle.csv`](resultats_chanfrein_pci_oracle.csv),
+[`resultats_chanfrein_pci_standard.csv`](resultats_chanfrein_pci_standard.csv),
+[`resultats_chanfrein_pci_jura_standard.csv`](resultats_chanfrein_pci_jura_standard.csv).
+
+| plan | france-geojson, standard | Parcellaire Express, standard | plancher affine |
+|---|---|---|---|
+| Courvières (25) | 21 m calé | **11 m calé** | 12 m |
+| Chapelle-des-Bois (25) | 25 m calé | **17 m calé** | 25 m |
+| Boujailles (25) | 598 m à vérifier | **22 m calé** | 24 m |
+| Villers-sous-Chalamont (25) | 33 m calé | **15 m calé** | 32 m |
+| Arc-sous-Montenot (25) | 54 m calé | **40 m calé** | 44 m |
+| Cornimont, Ventron, Senones (88) | 24–44 m calé | **11–34 m calé** | 15–96 m |
+| Pruzilly (71) | 26 m à vérifier | **12 m calé** | 14 m |
+| Chille (39) | 39 m à vérifier | **7 m calé** | 14 m |
+| Montaigu (39) | 28 m calé | **21 m calé** | 10 m |
+
+Écart à la 2e pose : 0,29–0,67 pour les plans calés, ≤ 0,09 pour les échecs (Seine-Saint-Denis,
+Val-d'Oise hors de leur dpi, feuille de section). L'option `--contours wfs` (ADMIN EXPRESS
+COG à jour, 202 sommets) est corrigée (champ `code_insee`) mais n'a pas été évaluée.
