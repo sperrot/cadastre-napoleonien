@@ -353,3 +353,61 @@ même lignée que le plan napoléonien. `--contours pci` :
 Écart à la 2e pose : 0,29–0,67 pour les plans calés, ≤ 0,09 pour les échecs (Seine-Saint-Denis,
 Val-d'Oise hors de leur dpi, feuille de section). L'option `--contours wfs` (ADMIN EXPRESS
 COG à jour, 202 sommets) est corrigée (champ `code_insee`) mais n'a pas été évaluée.
+
+## Jura : reprise des échecs du lot à l'aveugle
+
+Lot de 30 TA archives39 ([`lot_aveugle_39.csv`](lot_aveugle_39.csv), validé à l'œil dans
+[`validation_lot.csv`](validation_lot.csv)) : 24 calés (22 justes, 2 décalés), 6 « à vérifier ».
+Chaque échec a été repris à la main (poses candidates affichées côte à côte).
+
+### Causes
+
+| INSEE | commune | cause |
+|---|---|---|
+| 39194 | Desnes | Liseré communal rose pâle : le cartouche ovale et le gros lettrage noirs attiraient toutes les poses de la recherche grossière. |
+| 39445 | Publy | Même cause (lettrage « COMMUNE DE … » noir). Le TA est une « 1re partie » ; le lobe sud de la commune actuelle (sur le cartouche) n'y figure pas. |
+| 39370 | Mouchard | TA au 1/5 000 : le contour actuel (lobe sud-ouest en plus) dépasse la largeur de l'image, donc la bonne échelle était écartée d'office. |
+| 39017 | Arlay | Commune nouvelle de 2016 qui a absorbé Saint-Germain-lès-Arlay (la voisine « St Germain » du TA). **Et** feuille numérisée à ~163 dpi au lieu de 137,5 (échelle apparente 1/8 440). |
+| 39553 | Vernois | Ce n'est pas la taille (`diam_min` 0,10 ne suffit pas) : la commune de 1824 (corps + longue queue au nord-ouest) n'a plus la forme du contour actuel. Limite modifiée, non recalable par le contour. |
+| 39441 | Prémanon | TA « 1re partie » (sections A et B seulement), alors que le contour actuel couvre aussi C et D, soit environ deux fois la surface. Non recalable avec le contour entier. |
+| 39218 | Étrepigney | Calé mais décalé vers le sud : la recherche grossière suivait les longs bords rectilignes de la forêt de Chaux (non encrés). Corrigé par la carte saturée, qui translate le contour vers le nord comme demandé. |
+| 39187 | Cuvier | Le TA a un lobe au nord, vers Courvière, absent de la limite actuelle. Ailleurs la pose colle : c'est le maximum local de couverture (0,82, recherche locale ±6° × ±80 px), donc rien à gagner par une rotation. Limite modifiée. |
+
+### Corrections (généralisables)
+
+- **Carte saturée** pour la recherche grossière (`saturation=0.3`) : un trait pâle bien placé pèse autant que l'encre noire.
+- **Débord** (`debord=0.1`) : le contour peut dépasser l'image de 10 % de chaque côté.
+- **`diam_min` 0,25 → 0,10** (petites communes sur grande feuille).
+- **Contour de l'ancienne commune** (`contours_ign`, code `a39017`) : feuilles du Parcellaire Express hors communes absorbées depuis (champ `com_abs`). Ce contour n'est utilisé que si la commune a absorbé une voisine, il ne change donc rien ailleurs. Une commune absorbée sans trace au cadastre est remplacée par son héritière (mouvements du COG).
+- **Relance à échelles élargies** (×0,8–×1,25) pour les plans non calés (`lot_aveugle.py`, désactivable avec `--sans-relance`).
+- Essayé sans effet : un palier d'affinage τ = 2 px (`banc_chanfrein.py --paliers 8,5,3,2`) donne Chille 7,3 → 7,0 m et Montaigu 21,2 → 21,1 m.
+
+### Avant / après ([`lot_aveugle_39_v2.csv`](lot_aveugle_39_v2.csv) : saturation + débord + diam_min)
+
+| INSEE | commune | verdict avant | avant | après | déplacement |
+|---|---|---|---|---|---|
+| 22 plans justes | | ok | calé | calé (écart 0,16–0,64) | ≤ 4 m |
+| 39187 | Cuvier | approx | calé 0,43 | calé 0,43 | 0 m |
+| 39218 | Étrepigney | approx | calé 0,16 | **calé 0,34** | 241 m (vers le nord) |
+| 39194 | Desnes | faux | à vérifier 0,01 | **calé 0,22** | 2 217 m |
+| 39445 | Publy | faux | à vérifier 0,00 | **calé 0,19** | 676 m |
+| 39370 | Mouchard | faux | à vérifier 0,00 | **calé 0,18** (1/5 100) | 1 622 m |
+| 39017 | Arlay | approx | à vérifier 0,01 | à vérifier (v2) → **écart 0,43 avec l'ancienne commune et la relance** (essai isolé, 1/8 440) | |
+| 39553 | Vernois | faux | à vérifier | à vérifier | |
+| 39441 | Prémanon | faux | à vérifier | à vérifier | |
+
+Bilan : 27/30 calés (28 avec Arlay), sans faux positif. Plans de référence : Chille 7,3 m et
+Montaigu 21,2 m, inchangés. Banc Doubs/Vosges/IDF (`--contours pci`, 300 dpi) inchangé à
+±1 m, Senones 34 → 16 m. Coût : 1,2 à 2,5 fois plus long (Mouchard 54 → 134 s).
+
+### TA sans INSEE (`lot_aveugle.py --dept 39 --sans-insee`)
+
+`harvest/seed_jura_sans_insee.tsv` (non versionné) contient 178 lignes de TA, soit 149 distincts.
+Communes lues dans le titre de la notice (« Abergement-les-Thézy, Dournon, Lemuy,
+Montmarlon-les-Thézy, tableaux d'assemblage »). Les noms anciens sont résolus par le COG INSEE
+depuis 1943 (graphies voisines, articles, « lès … », homonymes départagés par la proximité des
+autres communes du TA), l'image par la notice archives39 (`harvest_jura.media_of`). On pose les
+anneaux de **chaque** commune (code `a…+a…`), limites intérieures comprises, puisqu'elles sont
+encrées sur le TA ; c'est plus contraint que l'union seule. Résultat : 143 TA recalables (108
+simples, 35 communs à 2–8 communes), 2 noms non résolus (Beyne, Rozay), 4 notices sans lien
+média (uuid générique partagé, écartées). **Lot pas encore lancé.**

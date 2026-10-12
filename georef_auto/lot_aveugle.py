@@ -77,6 +77,90 @@ def catalogue(dept, contours):
     return uniq
 
 
+def _noms_du_titre(commune, titre):
+    """Communes couvertes par un TA, d'après la notice archives39 :
+    « Abergement-les-Thézy,Dournon,Lemuy, Montmarlon-les-Thézy, tableaux d'assemblage, … » ;
+    « Tableau d'assemblage des communes de Baverans, Brevans, Châtenois, Rochefort. » ;
+    nœud « Arthenas » + titre « Tableau d'assemblage commun à Augisey, Grusse et … »."""
+    m = re.search(r"[eé]tait celui de la commune de ([^.,;]+)", titre)
+    if m:                                    # Bourcia avant 1822 = Civria ou Dancia
+        return [m.group(1).strip()]
+    m = re.match(r"^(.*?)[\s,.-]*tableaux? d.assemblage", titre, re.I)
+    tete = m.group(1) if m else ""
+    if not tete:
+        m = re.search(r"(?:commun(?:es)? à|des communes d[e'’])\s*(.+?)(?:[.,]\s*(?:canton|Date|g[ée]om)|\.?$)", titre, re.I)
+        tete = m.group(1) if m else ""
+        if commune and not re.match(r"(tableau|plans?|feuilles?) ", commune, re.I):
+            tete = commune + ", " + tete
+    tete = tete.split(";")[0]
+    return [n.strip(" .") for n in re.split(r"\s*[,&]\s*|\s+et\s+", tete) if n.strip(" .")]
+
+
+def catalogue_sans_insee(dept, contours):
+    """TA du seed sans INSEE (harvest/seed_jura_sans_insee.tsv) : TA communs à plusieurs communes
+    et noms anciens. insee = codes joints par « + » ; image résolue par la notice archives39."""
+    import sys
+    from contours_ign import resoudre_nom
+    if dept != "39":
+        raise SystemExit("--sans-insee : seul le Jura est câblé")
+    sys.path.insert(0, str(ROOT / "harvest"))
+    import harvest_jura as hj
+    hj.prime()
+    idx = contours.index_cog(dept)
+    out, vus = [], set()
+    for line in (ROOT / "harvest/seed_jura_sans_insee.tsv").read_text(encoding="utf-8").splitlines()[1:]:
+        commune, titre, url = (line.split("	") + ["", "", ""])[:3]
+        if "assemblage" not in titre.lower():
+            continue
+        noms = _noms_du_titre(commune, titre)
+        hits = {n: resoudre_nom(n, idx) for n in noms}
+        # homonymes (Lavans, Chilly, Vaux…) : le plus proche des autres communes du même TA
+        surs = [h[0][0] for h in hits.values() if len(h) == 1]
+        pts = [p for p in (centre_de(contours, c) for c in surs) if np.isfinite(p).all()]
+        centre = np.mean(pts, axis=0) if pts else None
+        codes, libelles, manquants = [], [], []
+        for n, hit in hits.items():
+            if len(hit) > 1 and centre is not None:
+                hit = [min(hit, key=lambda h: np.hypot(*(centre_de(contours, h[0]) - centre)))]
+            if len(hit) == 1 and not np.isfinite(centre_de(contours, hit[0][0])).all():
+                # fusion sans trace au cadastre (Champagny -> Chaux-Champagny, 1973) : l'héritière
+                h = contours.heritiere(hit[0][0])
+                hit = [(h, f"{hit[0][1]} (dans {h})")] if h else []
+            if len(hit) == 1:
+                if hit[0][0] not in codes:
+                    codes.append(hit[0][0])
+                    libelles.append(hit[0][1])
+            else:
+                manquants.append(n)
+        ark = hj.ark_of(url)
+        d = dict(insee="+".join(codes), commune=" + ".join(libelles) or commune, cote=ark or "", image_url="")
+        if manquants or not codes:
+            d["statut"] = "nom non résolu : " + ", ".join(manquants or noms or [commune])
+        else:
+            jpg, _, _ = hj.media_of({"ark": ark})
+            d["image_url"] = jpg or ""
+            if not jpg:
+                d["statut"] = "image introuvable"
+        if (d["insee"], d["image_url"]) not in vus:
+            vus.add((d["insee"], d["image_url"]))
+            out.append(d)
+    # notice sans lien média : media_of retombe sur un uuid générique, commun à plusieurs TA
+    from collections import Counter
+    n_img = Counter(d["image_url"] for d in out if d["image_url"])
+    for d in out:
+        if n_img.get(d["image_url"], 0) > 1 and not d.get("statut"):
+            d["statut"] = "image introuvable (uuid partagé par plusieurs notices)"
+    return out
+
+
+def centre_de(contours, code):
+    """Centre (L93) d'une commune ancienne, pour départager les homonymes."""
+    try:
+        return np.vstack(contours.contour("a" + code)).mean(0)
+    except LookupError:
+        return np.array([np.inf, np.inf])
+
+
 def apercu(img, M_px_l93, rings, statut, texte, chemin, largeur=1400):
     """Image réduite + contour IGN posé (pose pixel 2000 px -> L93 inversée)."""
     f = largeur / img.shape[1]
@@ -94,7 +178,13 @@ def apercu(img, M_px_l93, rings, statut, texte, chemin, largeur=1400):
 
 
 COLS = ["dept", "insee", "commune", "cote", "statut", "contraste", "ecart_2e", "couverture", "angle_deg",
-        "m_par_px_plein", "echelle_deduite", "largeur_px", "duree_s", "pose_plein_l93", "image_url", "apercu"]
+        "m_par_px_plein", "echelle_deduite", "echelles", "largeur_px", "duree_s", "pose_plein_l93", "image_url", "apercu"]
+
+
+def code_contour(insee, ancienne=True):
+    """« 39017 » -> « a39017 » : contour de la commune à l'époque du TA (communes absorbées depuis
+    retirées, voir contours_ign) ; « 39005+39190 » (TA commun) -> « a39005+a39190 »."""
+    return "+".join(("a" if ancienne else "") + c for c in insee.split("+"))
 
 
 def reglages(args):
@@ -107,18 +197,28 @@ def traiter_un(d, args, out):
     src = Contours(args.contours, HERE / "sortie_chanfrein/cache_contours")      # contour à poser
     denoms = [int(x) for x in args.denominateurs.split(",")]
     row = dict(dept=args.dept, **d)
+    if row.get("statut"):                    # catalogue : nom non résolu, pas d'image
+        return row
     t0 = time.time()
     try:
         m = dict(id=f"{args.dept}_{d['insee']}", service=WORKER + quote(d["image_url"], safe=""))
         path, w = fetch_image(m, 2000, out / "images")
         img = cv2.imdecode(np.fromfile(str(path), dtype=np.uint8), cv2.IMREAD_COLOR)
-        rings = src.contour(d["insee"])
+        rings = src.contour(code_contour(d["insee"], not args.contour_actuel))
         # échelles candidates en m/px de l'image 2000 px : la pleine résolution est inconnue
         # ici (pas de manifeste lu) -> on la lit dans info.json
         full_w = largeur_pleine(m["service"]) or w
         k = full_w / w
         ech = [dd * 0.0254 / args.dpi * j * k for dd in denoms for j in (0.97, 1.0, 1.03)]
         r = recaler_image(img, rings, ech, **reglages(args))
+        row["echelles"] = "fonds"
+        if args.relance and (r is None or r["statut"] != "calé"):
+            # quelques feuilles sont numérisées à une autre résolution que le reste du fonds
+            # (Arlay : ~163 dpi au lieu de 137,5) : relance sur une gamme ×0,8–×1,25
+            ech2 = [dd * 0.0254 / args.dpi * j * k for dd in denoms for j in np.geomspace(0.8, 1.25, 9)]
+            r2 = recaler_image(img, rings, ech2, **reglages(args))
+            if r2 is not None and (r is None or r2["ecart_2e"] > r["ecart_2e"]):
+                r, row["echelles"] = r2, "élargies"
         if r is None:
             row["statut"] = "aucune pose"
         else:
@@ -143,8 +243,9 @@ def traiter_un(d, args, out):
 def traiter(args):
     out = Path(args.out)
     (out / "apercus").mkdir(parents=True, exist_ok=True)
-    cont = Contours("france-geojson", HERE / "sortie_contour/cache_contours")   # noms -> INSEE
-    cat = catalogue(args.dept, cont)
+    cont = (Contours(args.contours, HERE / "sortie_chanfrein/cache_contours") if args.sans_insee
+            else Contours("france-geojson", HERE / "sortie_contour/cache_contours"))   # noms -> INSEE
+    cat = catalogue_sans_insee(args.dept, cont) if args.sans_insee else catalogue(args.dept, cont)
     exclus = set(args.exclure.split(",")) if args.exclure else set()
     cat = [c for c in cat if c["insee"] not in exclus]
     rng = np.random.default_rng(args.seed)
@@ -153,7 +254,7 @@ def traiter(args):
         voulus = args.insee.split(",")
         choix = [c for c in cat if c["insee"] in voulus]
     print(f"{args.dept} : {len(cat)} TA au catalogue, {len(choix)} tirés", flush=True)
-    fichier = out / f"lot_{args.dept}.csv"
+    fichier = out / f"lot_{args.dept}{'_sans_insee' if args.sans_insee else ''}.csv"
     deja = {}
     if fichier.exists():
         deja = {r["insee"]: r for r in csv.DictReader(open(fichier, encoding="utf-8"))}
@@ -188,7 +289,7 @@ def largeur_pleine(service):
     return _info[service]
 
 
-def reapercus(out, contours="pci"):
+def reapercus(out, contours="pci", ancienne=True):
     """Redessine les aperçus depuis les poses du CSV (images et contours en cache)."""
     src = Contours(contours, HERE / "sortie_chanfrein/cache_contours")
     for f in sorted(Path(out).glob("lot_*.csv")):
@@ -199,7 +300,7 @@ def reapercus(out, contours="pci"):
                                cv2.IMREAD_COLOR)
             k = int(r["largeur_px"]) / img.shape[1]
             M = np.vstack([np.array(json.loads(r["pose_plein_l93"])), [0, 0, 1]]) @ np.diag([k, k, 1])
-            apercu(img, M, src.contour(r["insee"]), r["statut"],
+            apercu(img, M, src.contour(code_contour(r["insee"], ancienne)), r["statut"],
                    f"{r['commune']} ({r['insee']})  {r['statut']}  ecart {r['ecart_2e']}  1/{r['echelle_deduite']}",
                    Path(out) / r["apercu"])
 
@@ -274,6 +375,12 @@ def main():
     ap.add_argument("--debord", type=float, default=0.1, help="lot initial : 0")
     ap.add_argument("--insee", default="", help="ne traiter que ces INSEE (liste, pris dans tout le catalogue)")
     ap.add_argument("--jobs", type=int, default=1, help="plans traités en parallèle")
+    ap.add_argument("--sans-insee", action="store_true",
+                    help="TA du Jura sans INSEE (TA communs, noms anciens) : harvest/seed_jura_sans_insee.tsv")
+    ap.add_argument("--sans-relance", dest="relance", action="store_false",
+                    help="pas de 2e passe à échelles élargies pour les plans non calés")
+    ap.add_argument("--contour-actuel", action="store_true",
+                    help="contour de la commune actuelle, communes absorbées depuis comprises (lot initial)")
     ap.add_argument("--exclure", default="", help="INSEE à écarter (déjà en vérité terrain)")
     ap.add_argument("--out", default="sortie_lot")
     ap.add_argument("--contours", default="pci", help="pci (Parcellaire Express) | wfs | france-geojson")
@@ -284,7 +391,7 @@ def main():
             ap.error("--dept requis")
         traiter(args)
     else:
-        reapercus(args.out, args.contours)
+        reapercus(args.out, args.contours, not args.contour_actuel)
     page(args.out)
 
 
