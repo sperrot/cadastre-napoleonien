@@ -180,7 +180,7 @@ def contraste(M, G, dist, tau, decalage):
 
 
 def recaler_image(img, anneaux_l93, m_par_px, pas_angle=2.0, largeur_grossiere=800,
-                  n_hyp=12, sigma=1.5, seuil_trait=0.15, seuils=(0.15, 0.10), debug=None):
+                  n_hyp=12, sigma=1.5, diam_min=0.25, seuil_trait=0.15, seuils=(0.15, 0.10), debug=None):
     """img : BGR. anneaux_l93 : contour IGN. m_par_px : échelles candidates (mètres par pixel de
     img). Renvoie dict(M pixel->L93 3x3, couverture, z, ecart_2e, angle_deg, m_par_px, statut)."""
     rings = [np.asarray(r, float) for r in anneaux_l93]
@@ -194,7 +194,7 @@ def recaler_image(img, anneaux_l93, m_par_px, pas_angle=2.0, largeur_grossiere=8
     traits = carte_traits(img)
     F = carte_proximite(reduire_max(traits, largeur_grossiere), sigma=sigma, fenetre=largeur_grossiere / 20)
     ech_s = [f / m for m in m_par_px]             # px réduits par mètre
-    cands = recherche_grossiere(F, rings_c, ech_s, pas_angle)
+    cands = recherche_grossiere(F, rings_c, ech_s, pas_angle, diam_min)
     if not cands:
         return None
     diam = np.ptp(np.vstack(rings_c), axis=0).max()

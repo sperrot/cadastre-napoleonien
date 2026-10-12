@@ -7,15 +7,22 @@ le motif de nommage open data est `…/FRAD025_<cote>_<NN>.jpg` où **la page 01
 est le tableau d'assemblage** de la commune et les suivantes les feuilles de
 section.
 
+⚠️ La règle « page 01 = TA » est fausse pour ~1 cote sur 3 (validation visuelle
+du 2026-10-12) : le TA peut être en _02…_11. `georef_auto/trouver_ta_doubs.py`
+retrouve la vraie page en y recalant le contour communal ; son CSV corrige la
+règle (`--ta-csv`, par défaut georef_auto/sortie_ta_doubs/ta_doubs.csv s'il existe).
+
 Ce script, idempotent, applique via PostgREST (service_role) :
   - `type='tableau_assemblage'` pour les `_01.jpg`
   - `type='feuille'` pour les autres
+  - puis, pour chaque cote dont le TA trouvé n'est pas la _01 : la _01 repasse en
+    `feuille` et la page trouvée en `tableau_assemblage`
   - `feuille_num` = entier extrait du suffixe `_NN` (tri correct, libellés
     « Feuille N » au lieu de « Planche » dans la GED)
 
-Usage : python harvest/fix_doubs_types.py [--dry-run]
+Usage : python harvest/fix_doubs_types.py [--dry-run] [--ta-csv chemin.csv]
 """
-import os, re, sys, json, argparse, urllib.request, urllib.error
+import os, re, sys, csv, json, argparse, urllib.request, urllib.error
 
 # Console Windows en cp1252 par défaut → les flèches/accents cassent les print()
 try:
@@ -59,12 +66,26 @@ def api(env, method, path, body=None, prefer=None):
 
 
 PAGE_RE = re.compile(r'_(\d{1,3})\.jpe?g$', re.I)
+COTE_RE = re.compile(r'/FRAD025_(3P\d+)_(\d{1,3})\.jpe?g$', re.I)
+TA_CSV = os.path.join(HERE, '..', 'georef_auto', 'sortie_ta_doubs', 'ta_doubs.csv')
+
+
+def pages_ta(chemin):
+    """{cote: numéro de page du TA} pour les cotes où trouver_ta_doubs a calé une page."""
+    if not chemin or not os.path.exists(chemin):
+        return {}
+    with open(chemin, encoding='utf-8') as f:
+        return {r['cote']: int(r['page_ta']) for r in csv.DictReader(f)
+                if r.get('statut') == 'calé' and r.get('page_ta')}
 
 
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument('--dry-run', action='store_true')
+    ap.add_argument('--ta-csv', default=TA_CSV, help='sortie de georef_auto/trouver_ta_doubs.py')
     args = ap.parse_args()
+    ta = pages_ta(args.ta_csv)
+    print(f'{len(ta)} cotes au TA vérifié, dont {sum(n != 1 for n in ta.values())} hors page 01')
     env = load_env()
 
     # 1) Récupérer toutes les lignes du 25
@@ -90,7 +111,9 @@ def main():
             sans_motif += 1
             continue
         num = int(m.group(1))
-        want_type = 'tableau_assemblage' if num == 1 else 'feuille'
+        mc = COTE_RE.search(r.get('image_url') or '')
+        page_ta = ta.get(mc.group(1), 1) if mc else 1
+        want_type = 'tableau_assemblage' if num == page_ta else 'feuille'
         if r.get('type') != want_type or r.get('feuille_num') != num:
             updates.append({'id': r['id'], 'type': want_type, 'feuille_num': num})
 
@@ -125,7 +148,17 @@ def main():
         else:
             err += 1
             print(f'  page {suffixe} : ERR {st} {msg}')
-    print(f'termine : {ok} groupes mis a jour, {err} erreurs')
+    # 4) Exceptions : cotes dont le TA n'est pas la page 01 (une requête par page)
+    for cote, num in sorted(ta.items()):
+        if num == 1:
+            continue
+        for page, want_type in ((1, 'feuille'), (num, 'tableau_assemblage')):
+            path = f'document?insee=like.25*&image_url=like.*/FRAD025_{cote}_{page:02d}.jpg'
+            st, msg = api(env, 'PATCH', path, body={'type': want_type}, prefer='return=minimal')
+            ok, err = (ok + 1, err) if st < 300 else (ok, err + 1)
+            if st >= 300:
+                print(f'  {cote}_{page:02d} : ERR {st} {msg}')
+    print(f'termine : {ok} mises a jour, {err} erreurs')
 
 
 if __name__ == '__main__':
