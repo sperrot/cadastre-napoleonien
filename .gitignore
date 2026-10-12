@@ -42,4 +42,5 @@ harvest/ligeo/depot/**/arks*.tsv
 georef_auto/sortie_mare*/
 georef_auto/synth*/
 georef_auto/sortie_contour*/
+georef_auto/sortie_chanfrein*/
 georef_auto/cache_contours/

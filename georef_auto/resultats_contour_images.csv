@@ -1,0 +1,16 @@
+id,carte,insee,commune,n_gcp,rotation_vraie,angle_estime,methode,iou_enveloppe,part_inliers,statut,erreur_mediane_m,rmse_m,erreur_max_m,plancher_affine_m,duree_s
+258f6ed109ae27b5,FRAD025_3P178_01.jpg,25176,Courvières,21,0.1,2.9,densite,0.47,0.27,à vérifier,240.0,233.8,278.7,12.5,28.2
+c26b2cc241446bda,FRAD088_3NUM3_88116_3P5056_1.jpg,88116,Cornimont,60,0.6,,,,,échec étape 1 (aucune enveloppe),,,,22.1,2.0
+d5b9f30c24c0baeb,FRAD025_3P122_01.jpg,25121,Chapelle-des-Bois,49,2.4,86.6,contour,0.13,0.26,à vérifier,10302.2,11525.0,20743.7,24.9,21.6
+140e7b2239d70ae1,FRAD025_3P623_01.jpg,25621,Villeneuve-d'Amont,5,23.1,165.5,densite,0.0,0.29,à vérifier,46602.4,41374.9,48189.1,42.0,17.4
+bc5c5914be984ad7,AD071_0362_3PA_07976_D.jpg,71362,Pruzilly,21,-30.6,90.3,densite,0.0,0.19,à vérifier,25082.3,25200.8,36315.0,14.4,13.5
+3b55c34b8af7d73a,FRAD025_3P80_01.jpg,25079,Boujailles,42,0.5,7.5,densite,0.55,0.25,à vérifier,784.9,1108.3,1919.1,24.1,15.9
+c1edb1ecf469017e,FRAD025_3P630_01.jpg,25627,Villers-sous-Chalamont,17,59.7,58.1,contour,0.0,0.24,à vérifier,58159.6,68357.9,100722.7,31.9,27.0
+e8b3151afc3abc7d,FRAD025_3P27_01.jpg,25026,Arc-sous-Montenot,8,0.0,153.8,densite,0.35,0.31,à vérifier,4761.2,4917.2,6464.4,43.7,15.7
+61f192b21527751a,FRAD088_3NUM3_88500_3P5440_1.jpg,88500,Ventron,41,-0.7,,,,,échec étape 1 (aucune enveloppe),,,,14.7,1.2
+9c415b1a945ec557,FRAD095_3P_3290.jpg,95680,Villiers-le-Bel,42,-14.5,-147.0,densite,0.0,0.27,à vérifier,10955.0,10800.1,14871.5,15.3,16.8
+e679c9b32472a9a5,AD093CA_2047W_0049_C.jpg,93029,Drancy,3,-0.4,163.6,contour,0.54,0.21,à vérifier,3929.4,4451.1,5401.4,,21.5
+63e92044763b459b,AD093CA_2047W_0121_C.jpg,93029,Drancy,6,0.6,-115.2,contour,0.0,0.28,à vérifier,61217.5,62356.8,79401.6,19.2,17.8
+6bd7b1e39fcd1bb9,FRAD088_3NUM3_88451_3P5391_1.jpg,88451,Senones,9,90.8,47.6,contour,0.0,0.14,à vérifier,116731.6,162515.3,237536.7,95.8,11.2
+e8393951d4797da8,AD093CA_2047W_0563_C.jpg,93071,Sevran,4,-2.3,138.4,densite,0.0,0.33,à vérifier,11094.4,11689.6,15679.0,,7.0
+4c0880dbfa9d1438,AD093CA_2047W_0012_C.jpg,93005,Aulnay-sous-Bois,11,89.1,97.0,densite,0.54,0.23,à vérifier,617.8,919.0,1426.1,101.4,17.5

@@ -1,11 +1,14 @@
 # Géoréférencement automatique
 
-Deux approches évaluées sur nos plans déjà calés dans Allmaps :
+Trois approches évaluées sur nos plans déjà calés dans Allmaps :
 
 1. [MaRE](#évaluation-de-mare) (recalage de l'hydrographie sur OSM) : **non retenu**.
-2. [Recalage par contour communal](#recalage-par-contour-communal) (contour du tableau
-   d'assemblage ↔ contour IGN de la commune) : **prometteur**, 10 plans sur 15 calés
-   automatiquement à moins de 50 m à partir du contour, sans aucun faux positif.
+2. [Recalage par contour communal](#recalage-par-contour-communal) (enveloppe extraite du
+   tableau d'assemblage ↔ contour IGN) : l'étape 2 marche sur les masques Allmaps, mais
+   **l'extraction de l'enveloppe échoue sur les vraies images (0/15)**. Abandonné.
+3. [Recalage direct sur les traits](#recalage-direct-sur-les-traits) (contour IGN posé sur
+   l'encre du TA, sans extraction) : **retenu**. À échelle connue, 13 plans sur 17 calés à
+   16–54 m ; avec les échelles standard du fonds, 7 Doubs/Vosges calés, aucun faux positif.
 
 ## Évaluation de MaRE
 
@@ -244,3 +247,82 @@ Autres options : `--contours wfs` (contours IGN à jour), `--methode contour|den
 `--only <ids Allmaps>`. Hors réseau : `--source masque` (étape 2) et
 `--source synthetique` (étapes 1+2), avec `--rotation-aleatoire` et
 `--parasites routes,cartouche,voisine`.
+
+### Résultat sur les vraies images : échec de l'étape 1
+
+`python banc_contour.py --source image` (lancé en local le 2026-10-11, détail :
+[`resultats_contour_images.csv`](resultats_contour_images.csv)) : **0 plan calé sur 15**.
+L'hypothèse « la commune est la plus grande région fermée » est fausse sur les vrais TA : les
+limites de section sont aussi marquées que la limite communale (Courvières), le seul contour
+fermé net est l'ovale du cartouche (Villers-sous-Chalamont), le bord du scanner et les taches
+passent pour de l'encre (Pruzilly), le trait est trop pâle (Cornimont, Ventron). Le statut de
+confiance, lui, a tenu : aucun plan déclaré calé à tort.
+
+---
+
+## Recalage direct sur les traits
+
+Au lieu d'extraire un contour fermé du TA puis de le recaler, on pose **directement le contour
+IGN sur l'encre** et on cherche la pose où il tombe sur des traits. Seul ce sens est mesuré
+(IGN → image) : l'encre en trop (sections, chemins, lettrage, cartouche, carroyage) ne pénalise
+pas, et un trait pâle ou tireté suffit s'il est au bon endroit.
+
+### Méthode ([`recalage_chanfrein.py`](recalage_chanfrein.py))
+
+| Étape | Principe |
+|---|---|
+| Carte de traits | Écart Lab au papier local (assombrissement + couleur pondérée, ce qui capte le liseré rose pâle et les traits gris clairs), moins sa version lissée (l'estompe du relief n'est pas un trait). Longs traits horizontaux/verticaux effacés (cadre, filets, méridienne). |
+| Recherche | Image réduite à 800 px. Pour chaque échelle candidate et chaque rotation (pas 2°), translation par corrélation (`cv2.matchTemplate`) du contour IGN dessiné avec la carte de traits adoucie et centrée localement. 12 meilleures poses distinctes. |
+| Affinage | Image 2000 px : ICP modèle → scène (point IGN → pixel de trait le plus proche) + RANSAC similitude, tolérance 8 → 3 px. |
+| Confiance | **Contraste** = couverture sur le contour (part à < 3 px d'un trait) moins couverture du même contour décalé de ±15 px : une limite est encrée sur la ligne, un fouillis l'est partout. Statut par l'**écart avec la 2e pose distincte** : calé ≥ 0,15, probable ≥ 0,10, sinon à vérifier. |
+
+Échelle : une liste d'hypothèses discrètes, propre au fonds (`--dpi`, `--denominateurs`).
+La résolution de numérisation est constante par fonds : Doubs open data et Vosges ≈ 300 dpi
+(0,85 m/px au 1/10 000), Jura archives39 ≈ 137,5 dpi (Chille au 1/5 000 : 0,93 m/px ;
+Montaigu au 1/10 000 : 1,84 m/px). Inutile de lire la barre d'échelle si le fonds est connu.
+
+Piège corrigé en route : la transformation L93 → pixel contient une symétrie (y vers le bas) ;
+une `SimilarityTransform` ne la représente pas, il faut l'estimer sur y retourné.
+
+### Résultats ([`banc_chanfrein.py`](banc_chanfrein.py))
+
+Échelle exacte (`--echelle oracle`, teste la recherche seule) :
+[`resultats_chanfrein_oracle.csv`](resultats_chanfrein_oracle.csv) — **11/15 calés, tous
+justes (16–52 m)**, + 2/2 dans le Jura (Chille 53 m, Montaigu 28 m). « À vérifier » :
+Boujailles (le contour glisse de 600 m le long de cette commune très allongée), Drancy 0049
+et Sevran (3–4 GCP, vérité douteuse), et la feuille de section 3P623 (aucune pose : la commune
+ne tient pas dans l'image).
+
+Échelles standard du fonds (`--echelle standard`) :
+[`resultats_chanfrein_standard.csv`](resultats_chanfrein_standard.csv),
+[`resultats_chanfrein_jura_standard.csv`](resultats_chanfrein_jura_standard.csv).
+
+| plan | 300 dpi, 4 échelles | statut | fonds (échelles du fonds) | statut |
+|---|---|---|---|---|
+| Courvières (25) | 21 m | calé | 21 m | calé |
+| Chapelle-des-Bois (25) | 25 m | calé | 25 m | calé |
+| Villers-sous-Chalamont (25) | 33 m | calé | 33 m | calé |
+| Arc-sous-Montenot (25) | 54 m | calé | 54 m | calé |
+| Boujailles (25) | 598 m | à vérifier | 598 m | à vérifier |
+| Chille (39) | — | — | 39 m | à vérifier |
+| Montaigu (39) | — | — | 28 m | calé |
+| Cornimont, Ventron, Senones (88) | 24–44 m | calé | | |
+| Pruzilly (71) | 26 m | à vérifier | | |
+| Seine-Saint-Denis, Val-d'Oise | (autre dpi) | à vérifier | | |
+
+**Aucun faux positif** (calé à plus de 100 m) dans aucun essai. Le point faible : avec
+plusieurs échelles candidates, une pose à la mauvaise échelle concurrence la bonne et des
+plans justes restent « à vérifier » (Chille, Pruzilly). Environ 30 s par plan.
+
+Vérité terrain : sur tout Allmaps (`api.allmaps.org/maps?containedBy=lat,lon,lat,lon`), les
+seuls plans cadastraux du Doubs et du Jura sont nos propres calages (6 + 2). Les deux du Jura
+sont dans [`allmaps_jura.json`](allmaps_jura.json) ; le plan enregistré sous « Vernantois » est
+celui de **Montaigu** (39348), d'où l'option `--insee id=code`.
+
+```bash
+python banc_chanfrein.py --echelle oracle
+python banc_chanfrein.py --echelle standard --dpi 300 --denominateurs 10000,20000
+python banc_chanfrein.py --collection allmaps_jura.json --images sortie_chanfrein/images     --out sortie_chanfrein_jura --echelle standard --dpi 137.5 --denominateurs 5000,10000     --insee e56d064b178aa527=39348
+```
+
+Images de contrôle : `sortie_chanfrein*/debug/<id>.jpg` (traits en rouge, contour IGN posé en bleu).
