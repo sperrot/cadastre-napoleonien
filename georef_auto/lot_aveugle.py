@@ -201,7 +201,9 @@ def traiter_un(d, args, out):
         return row
     t0 = time.time()
     try:
-        m = dict(id=f"{args.dept}_{d['insee']}", service=WORKER + quote(d["image_url"], safe=""))
+        # TA sans INSEE : deux TA peuvent couvrir les mêmes communes (Essavilly, Froidefontaine -> 39331)
+        ident = f"{args.dept}_{d['insee']}" + (f"_{d['cote']}" if args.sans_insee else "")
+        m = dict(id=ident, service=WORKER + quote(d["image_url"], safe=""))
         path, w = fetch_image(m, 2000, out / "images")
         img = cv2.imdecode(np.fromfile(str(path), dtype=np.uint8), cv2.IMREAD_COLOR)
         rings = src.contour(code_contour(d["insee"], not args.contour_actuel))
@@ -228,7 +230,7 @@ def traiter_un(d, args, out):
                        couverture=round(r["couverture"], 2), angle_deg=round(r["angle_deg"], 1),
                        m_par_px_plein=round(mpx, 3), echelle_deduite=int(round(mpx / 0.0254 * args.dpi, -2)),
                        largeur_px=full_w, pose_plein_l93=json.dumps(np.round(M[:2], 6).tolist()))
-            ap = f"apercus/{args.dept}_{d['insee']}.jpg"
+            ap = f"apercus/{ident}.jpg"
             apercu(img, r["M"], rings, r["statut"],
                    f"{d['commune']} ({d['insee']})  {r['statut']}  ecart {r['ecart_2e']:.2f}  1/{row['echelle_deduite']}",
                    out / ap)
@@ -296,7 +298,7 @@ def reapercus(out, contours="pci", ancienne=True):
         for r in csv.DictReader(open(f, encoding="utf-8")):
             if not r.get("apercu"):
                 continue
-            img = cv2.imdecode(np.fromfile(str(Path(out) / "images" / f"{r['dept']}_{r['insee']}.jpg"), dtype=np.uint8),
+            img = cv2.imdecode(np.fromfile(str(Path(out) / "images" / Path(r["apercu"]).name), dtype=np.uint8),
                                cv2.IMREAD_COLOR)
             k = int(r["largeur_px"]) / img.shape[1]
             M = np.vstack([np.array(json.loads(r["pose_plein_l93"])), [0, 0, 1]]) @ np.diag([k, k, 1])
@@ -313,7 +315,7 @@ def page(out):
     rows.sort(key=lambda r: (r["dept"], ordre.get(r["statut"], 3), -float(r["ecart_2e"] or 0)))
     cartes = []
     for r in rows:
-        cle = f"{r['dept']}_{r['insee']}"
+        cle = Path(r["apercu"]).stem
         cartes.append(f"""
 <article class="carte s{ordre.get(r['statut'], 3)}" data-cle="{cle}">
   <header><b>{html.escape(r['commune'])}</b> <span>{r['insee']} · {html.escape(r['cote'])}</span>
@@ -326,7 +328,7 @@ def page(out):
     <label><input type="radio" name="{cle}" value="hs"> pas un TA / illisible</label>
   </div>
 </article>""")
-    donnees = json.dumps({f"{r['dept']}_{r['insee']}": {k: r[k] for k in ("dept", "insee", "commune", "cote", "statut", "ecart_2e", "contraste", "echelle_deduite")} for r in rows}, ensure_ascii=False)
+    donnees = json.dumps({Path(r["apercu"]).stem: {k: r[k] for k in ("dept", "insee", "commune", "cote", "statut", "ecart_2e", "contraste", "echelle_deduite")} for r in rows}, ensure_ascii=False)
     Path(out, "validation.html").write_text(f"""<!doctype html>
 <html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Validation géoréf auto</title>
