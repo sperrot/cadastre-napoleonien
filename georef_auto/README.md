@@ -392,11 +392,12 @@ Chaque échec a été repris à la main (poses candidates affichées côte à c�
 | 39194 | Desnes | faux | à vérifier 0,01 | **calé 0,22** | 2 217 m |
 | 39445 | Publy | faux | à vérifier 0,00 | **calé 0,19** | 676 m |
 | 39370 | Mouchard | faux | à vérifier 0,00 | **calé 0,18** (1/5 100) | 1 622 m |
-| 39017 | Arlay | approx | à vérifier 0,01 | à vérifier (v2) → **écart 0,43 avec l'ancienne commune et la relance** (essai isolé, 1/8 440) | |
+| 39017 | Arlay | approx | à vérifier 0,01 | **calé 0,41** (v3 : ancienne commune + relance, 1/8 400) | 1 213 m |
 | 39553 | Vernois | faux | à vérifier | à vérifier | |
 | 39441 | Prémanon | faux | à vérifier | à vérifier | |
 
-Bilan : 27/30 calés (28 avec Arlay), sans faux positif. Plans de référence : Chille 7,3 m et
+Version finale ([`lot_aveugle_39_v3.csv`](lot_aveugle_39_v3.csv), ancienne commune + relance) :
+**28/30 calés**, sans faux positif ; les 22 plans justes bougent de 4 m au plus. Plans de référence : Chille 7,3 m et
 Montaigu 21,2 m, inchangés. Banc Doubs/Vosges/IDF (`--contours pci`, 300 dpi) inchangé à
 ±1 m, Senones 34 → 16 m. Coût : 1,2 à 2,5 fois plus long (Mouchard 54 → 134 s).
 
@@ -410,4 +411,18 @@ autres communes du TA), l'image par la notice archives39 (`harvest_jura.media_of
 anneaux de **chaque** commune (code `a…+a…`), limites intérieures comprises, puisqu'elles sont
 encrées sur le TA ; c'est plus contraint que l'union seule. Résultat : 143 TA recalables (108
 simples, 35 communs à 2–8 communes), 2 noms non résolus (Beyne, Rozay), 4 notices sans lien
-média (uuid générique partagé, écartées). **Lot pas encore lancé.**
+média (uuid générique partagé, écartées).
+
+Résultat ([`lot_aveugle_39_sans_insee.csv`](lot_aveugle_39_sans_insee.csv), 144 TA recalés) :
+
+| TA | calés | probables | à vérifier |
+|---|---|---|---|
+| communs à 2–8 communes | **33 / 36** | 1 | 2 |
+| une commune (nom ancien) | **72 / 85** | 1 | 12 |
+| commune absorbée sans trace au cadastre, posée sur l'héritière | 2 / 23 | 1 | 20 |
+
+Contrôle visuel d'un échantillon (calés à l'écart le plus faible) : les TA communs sont justes,
+limites intérieures comprises (Coisia + Condes, Prénovel + Les Piards + Chaux-des-Prés…). Sur
+une commune posée sur un contour plus grand (Ceffia dans Valzin-en-Petite-Montagne, Mournans
+avec Charbonny), seule la partie commune coïncide. L'échec est attendu quand l'héritière est
+bien plus grande (Azans dans Dole). Deux poses seulement ont eu besoin des échelles élargies.
