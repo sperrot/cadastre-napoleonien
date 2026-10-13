@@ -423,6 +423,6 @@ Résultat ([`lot_aveugle_39_sans_insee.csv`](lot_aveugle_39_sans_insee.csv), 144
 
 Contrôle visuel d'un échantillon (calés à l'écart le plus faible) : les TA communs sont justes,
 limites intérieures comprises (Coisia + Condes, Prénovel + Les Piards + Chaux-des-Prés…). Sur
-une commune posée sur un contour plus grand (Ceffia dans Valzin-en-Petite-Montagne, Mournans
+une commune posée sur un contour plus grand (Ceffia dans Aromas, Mournans
 avec Charbonny), seule la partie commune coïncide. L'échec est attendu quand l'héritière est
 bien plus grande (Azans dans Dole). Deux poses seulement ont eu besoin des échelles élargies.
