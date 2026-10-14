@@ -125,11 +125,15 @@ function largeurDemandee(suffix) {
 async function fetchRetente(url, init = {}, essais = 3) {
   let r = null;
   for (let i = 0; i < essais; i++) {
-    r = await fetch(url, init);
-    if (r.ok || (r.status !== 429 && r.status < 500)) return r;
+    try {
+      r = await fetch(url, init);
+      if (r.ok || (r.status !== 429 && r.status < 500)) return r;
+    } catch (_) {
+      r = null;   // coupure réseau : on retente aussi
+    }
     await new Promise((ok) => setTimeout(ok, 400 * 3 ** i));
   }
-  return r;
+  return r || new Response(null, { status: 502 });
 }
 
 async function fetchJpegDimensions(url) {
@@ -335,7 +339,10 @@ export default {
         if (!corps) {
           let rr = null;
           for (const c of candidats) {
-            rr = await fetchRetente(c, { headers: headersFor(c) });
+            // l'original aussi en cache chez Cloudflare : à fort zoom le serveur de tuiles le
+            // redemande à chaque tuile, et l'origine (download.doubs.fr…) finit par refuser (502)
+            rr = await fetchRetente(c, { headers: headersFor(c),
+                                         cf: { cacheEverything: true, cacheTtl: 2592000 } });
             if (rr.ok) break;
           }
           if (!rr || !rr.ok) return bad(502, "image source: " + (rr ? rr.status : "?"));
