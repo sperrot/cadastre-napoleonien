@@ -105,6 +105,21 @@ function rewriteServices(node, map) {
  * segment EXIF/ICC avant le SOF, qui tombe alors vers l'octet ~9900. 4 Ko
  * ratait ces images → fallback erroné → géoréf Allmaps décalée.
  */
+// Niveaux de réduction annoncés pour les JPEG nus (/static-iiif/) : 1 = original.
+const REDUCTIONS = [1, 2, 4, 8, 16];
+
+/** Largeur demandée dans une requête d'image IIIF (…/{région}/{taille}/{rotation}/{qualité}.{fmt}),
+ *  ou null si l'image entière est demandée (full, max, absente). */
+function largeurDemandee(suffix) {
+  const parts = suffix.split("/").filter(Boolean);
+  if (parts.length < 4) return null;
+  const t = decodeURIComponent(parts[1]);
+  let m;
+  if ((m = t.match(/^!?(\d+),(\d*)$/))) return parseInt(m[1], 10);
+  if ((m = t.match(/^pct:([\d.]+)$/))) return -parseFloat(m[1]);   // négatif = pourcentage
+  return null;   // full, max, ,H : image entière
+}
+
 async function fetchJpegDimensions(url) {
   try {
     const r = await fetch(url, {
@@ -275,20 +290,50 @@ export default {
               "http://iiif.io/api/image/2/level0.json",
               { "formats": ["jpg"], "qualities": ["default"] },
             ],
-            "tiles": [{ "width": w, "height": h, "scaleFactors": [1] }],
+            // Une tuile par niveau = l'image entière, réduite de 1 à 16 fois. Allmaps prend le
+            // niveau qui suffit à l'écran : un TA du Doubs (~90 Mpx, 7 Mo) ne pèse plus que
+            // quelques centaines de Ko quand on le voit de loin.
+            "tiles": [{ "width": w, "height": h, "scaleFactors": REDUCTIONS }],
+            "sizes": REDUCTIONS.slice(1).reverse()
+              .map((s) => ({ "width": Math.ceil(w / s), "height": Math.ceil(h / s) })),
           });
         }
-        // toute requête d'image → l'unique tuile, c'est le JPEG source
-        let rr = null;
-        for (const c of candidats) {
-          rr = await fetch(c, { headers: headersFor(c) });
-          if (rr.ok) break;
+        // toute requête d'image → l'image entière, réduite si une taille est demandée
+        let corps = null, type = "image/jpeg";
+        let largeur = largeurDemandee(suffix);
+        if (largeur) {
+          const { w } = await fetchJpegDimensions(candidats[0]);
+          if (largeur < 0) largeur = Math.ceil(w * -largeur / 100);
+          // niveau annoncé immédiatement supérieur : au plus 5 transformations uniques par image
+          const s = REDUCTIONS.slice().reverse().find((f) => Math.ceil(w / f) >= largeur) || 1;
+          if (s > 1) {
+            const red = await fetch(candidats[0], {
+              headers: headersFor(candidats[0]),
+              cf: { image: { width: Math.ceil(w / s), fit: "scale-down", quality: 82, format: "jpeg" },
+                    cacheEverything: true, cacheTtl: 2592000 },
+            });
+            // une transformation qui échoue (image hors limites…) retombe sur l'original
+            if (red.ok && (red.headers.get("content-type") || "").startsWith("image/")) {
+              corps = red.body;
+              type = red.headers.get("content-type");
+            }
+          }
         }
-        if (!rr || !rr.ok) return bad(502, "image source: " + (rr ? rr.status : "?"));
+        if (!corps) {
+          let rr = null;
+          for (const c of candidats) {
+            rr = await fetch(c, { headers: headersFor(c) });
+            if (rr.ok) break;
+          }
+          if (!rr || !rr.ok) return bad(502, "image source: " + (rr ? rr.status : "?"));
+          corps = rr.body;
+          type = rr.headers.get("content-type") || "image/jpeg";
+        }
         const hh = new Headers();
-        hh.set("Content-Type", rr.headers.get("content-type") || "image/jpeg");
+        hh.set("Content-Type", type);
+        hh.set("Cache-Control", "public, max-age=2592000");
         Object.entries(CORS).forEach(([k, v]) => hh.set(k, v));
-        return new Response(rr.body, { status: 200, headers: hh });
+        return new Response(corps, { status: 200, headers: hh });
       }
 
       // ── B) AD21 Archinoë : chemin interne /mnt/lustre/… via genereImage ──
