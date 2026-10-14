@@ -13,8 +13,8 @@ le masque est le contour posé (ancienne commune, union des communes d'un TA com
     python annotations_auto.py --lots lot_aveugle_39_v3.csv,lot_aveugle_39_sans_insee.csv \
         --verdict validation_lot_v3.csv --sortie ../web/annotations/ta_auto_jura.json --fusion
 
---fusion ajoute aussi les annotations à web/annotations/collection.json (le calque ne lit qu'une
-AnnotationPage) sans toucher aux plans calés à la main ; harvest/refresh_georef_status.py les
+--fusion remet dans web/annotations/collection.json (le calque ne lit qu'une AnnotationPage) les
+annotations de TOUS les ta_auto_*.json (Jura, Doubs…), sans toucher aux plans calés à la main ; harvest/refresh_georef_status.py les
 reprend à chaque régénération.
 """
 import argparse
@@ -38,14 +38,25 @@ ID_BASE = "https://sperrot.github.io/cadastre-napoleonien/annotations/auto/"
 to_wgs = Transformer.from_crs("EPSG:2154", "EPSG:4326", always_xy=True)
 
 
-def taille_image(service, cache):
-    """(largeur, hauteur) pleine résolution, lues dans info.json (en cache)."""
+def taille_image(service, cache, cache_f=None):
+    """(largeur, hauteur) pleine résolution, lues dans info.json (en cache). Le worker peut mettre
+    plus d'une minute sur un gros JPEG pas encore vu : 3 essais, 180 s chacun."""
     if service not in cache:
         import requests
-        r = requests.get(service.rstrip("/") + "/info.json", timeout=60,
-                         headers={"User-Agent": "Mozilla/5.0 (cadastre-napoleonien georef_auto)"})
-        j = r.json()
-        cache[service] = [int(j["width"]), int(j["height"])]
+        dernier = None
+        for _ in range(3):
+            try:
+                r = requests.get(service.rstrip("/") + "/info.json", timeout=180,
+                                 headers={"User-Agent": "Mozilla/5.0 (cadastre-napoleonien georef_auto)"})
+                j = r.json()
+                cache[service] = [int(j["width"]), int(j["height"])]
+                break
+            except Exception as ex:  # noqa: BLE001
+                dernier = ex
+        else:
+            raise RuntimeError(f"info.json inaccessible : {dernier}")
+        if cache_f is not None:
+            cache_f.write_text(json.dumps(cache), encoding="utf-8")
     return cache[service]
 
 
@@ -104,27 +115,33 @@ def annotation(r, rings, taille):
     }
 
 
-def fusionner(collection, auto_items):
-    """Ajoute les annotations auto à la page du calque, sans doubler un plan calé à la main."""
-    page = json.loads(Path(collection).read_text(encoding="utf-8"))
+def fusionner(collection):
+    """Remet dans la page du calque les annotations de tous les fichiers ta_auto_*.json (un par
+    département), sans doubler un plan calé à la main."""
+    collection = Path(collection)
+    page = json.loads(collection.read_text(encoding="utf-8"))
     garde = [it for it in page["items"] if not str(it.get("id", "")).startswith(ID_BASE)]
     deja = {it["target"]["source"]["id"] for it in garde}
-    ajout = [it for it in auto_items if it["target"]["source"]["id"] not in deja]
+    ajout = []
+    for f in sorted(collection.parent.glob("ta_auto_*.json")):
+        ajout += [it for it in json.loads(f.read_text(encoding="utf-8"))["items"]
+                  if it["target"]["source"]["id"] not in deja]
     page["items"] = garde + ajout
-    Path(collection).write_text(json.dumps(page, ensure_ascii=False), encoding="utf-8")
+    collection.write_text(json.dumps(page, ensure_ascii=False), encoding="utf-8")
     return len(garde), len(ajout)
 
 
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--lots", required=True, help="CSV de lot_aveugle.py, séparés par des virgules")
-    ap.add_argument("--verdict", required=True, help="CSV exporté de validation.html")
+    ap.add_argument("--verdict", default="", help="CSV exporté de validation.html (facultatif)")
     ap.add_argument("--sortie", default=str(HERE.parent / "web/annotations/ta_auto_jura.json"))
     ap.add_argument("--fusion", action="store_true", help="ajouter aussi à web/annotations/collection.json")
     ap.add_argument("--contours", default="pci")
     args = ap.parse_args()
 
-    verdict = {(v["insee"], v["cote"]): v["verdict"] for v in csv.DictReader(open(args.verdict, encoding="utf-8"))}
+    verdict = ({(v["insee"], v["cote"]): v["verdict"] for v in csv.DictReader(open(args.verdict, encoding="utf-8"))}
+               if args.verdict else {})
     src = Contours(args.contours, HERE / "sortie_chanfrein/cache_contours")
     cache_f = HERE / "sortie_chanfrein/cache_contours/info_json.json"
     cache = json.loads(cache_f.read_text(encoding="utf-8")) if cache_f.exists() else {}
@@ -140,9 +157,13 @@ def main():
                 ecartes.append(f"{r['commune']} ({r['statut']}, {v or 'sans verdict'})")
                 continue
             service = WORKER + quote(r["image_url"], safe="")
-            taille = taille_image(service, cache)
-            rings = src.contour(code_contour(r["insee"]))
-            items.append(annotation(r, rings, taille))
+            try:
+                taille = taille_image(service, cache, cache_f)
+                rings = src.contour(code_contour(r["insee"]))
+                items.append(annotation(r, rings, taille))
+            except Exception as ex:  # noqa: BLE001 — un plan en échec ne bloque pas le lot
+                ecartes.append(f"{r['commune']} (erreur : {type(ex).__name__})")
+                continue
             if v == "faux":
                 trop_grand.append(r["commune"])
     cache_f.write_text(json.dumps(cache), encoding="utf-8")
@@ -151,7 +172,7 @@ def main():
     print(f"{args.sortie} : {len(items)} TA, dont {len(trop_grand)} au masque trop grand ({', '.join(trop_grand)}) ; "
           f"{len(ecartes)} écartés : {', '.join(ecartes)}")
     if args.fusion:
-        n_main, n_auto = fusionner(HERE.parent / "web/annotations/collection.json", items)
+        n_main, n_auto = fusionner(HERE.parent / "web/annotations/collection.json")
         print(f"collection.json : {n_main} plans calés à la main + {n_auto} TA automatiques")
 
 

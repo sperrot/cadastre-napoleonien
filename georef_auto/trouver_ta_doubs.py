@@ -131,7 +131,7 @@ def traiter_cote(d, out, diam_min):
     global _src
     if _src is None:
         _src = Contours("pci", HERE / "sortie_chanfrein/cache_contours")
-    row = dict(cote=d["cote"], insee=d["insee"], commune=d["commune"], titre=d["titre"], n_pages=len(d["pages"]))
+    row = dict(dept="25", cote=d["cote"], insee=d["insee"], commune=d["commune"], titre=d["titre"], n_pages=len(d["pages"]))
     t0 = time.time()
     if not d["insee"]:
         row["statut"] = "INSEE non résolu (commune fusionnée ?)"
@@ -144,7 +144,7 @@ def traiter_cote(d, out, diam_min):
     return row
 
 
-COLS = ["cote", "insee", "commune", "titre", "n_pages", "page_ta", "statut", "ecart_2e", "angle_deg", "echelle_deduite",
+COLS = ["dept", "cote", "insee", "commune", "titre", "n_pages", "page_ta", "statut", "ecart_2e", "angle_deg", "echelle_deduite",
         "rang_densite", "essais", "duree_s", "largeur_px", "pose_plein_l93", "image_url", "apercu"]
 
 
