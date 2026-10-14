@@ -106,6 +106,19 @@ def write_collection(tous_items):
     dossier = os.path.join(HERE, '..', 'web', 'annotations')
     os.makedirs(dossier, exist_ok=True)
     chemin = os.path.join(dossier, 'collection.json')
+    # TA calés automatiquement (georef_auto/annotations_auto.py) : ajoutés au calque,
+    # sauf si le même plan est désormais calé à la main dans Allmaps
+    deja = {it['target']['source']['id'] for it in tous_items}
+    n_auto = 0
+    for nom in sorted(os.listdir(dossier)):
+        if nom.startswith('ta_auto_') and nom.endswith('.json'):
+            with open(os.path.join(dossier, nom), encoding='utf-8') as f:
+                for it in json.load(f)['items']:
+                    if it['target']['source']['id'] not in deja:
+                        tous_items = tous_items + [it]
+                        n_auto += 1
+    if n_auto:
+        print(f'collection : + {n_auto} TA cale(s) automatiquement (ta_auto_*.json)')
     page = {
         "@context": "http://www.w3.org/ns/anno.jsonld",
         "type": "AnnotationPage",

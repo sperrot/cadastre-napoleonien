@@ -1,0 +1,157 @@
+dept,insee,commune,cote,statut,ecart_2e,contraste,echelle_deduite,verdict
+"39","39347","Montagna-le-Templier","rbgc1sd8mkpf","calé","0.65","0.84","5000",ok
+"39","39268+39495","Ivrey + Saint-Thiébaud","s3649wxj5lnh","calé","0.65","0.75","10000",ok
+"39","39052","Bief-des-Maisons","3Pplan594","calé","0.64","0.82","9900",ok
+"39","39541","Valfin-lès-Saint-Claude","w6ngcr8374vl","calé","0.64","0.78","10000",ok
+"39","39378","Nanc-lès-Saint-Amour","xsng9fkmlt3q","calé","0.64","0.79","10000",ok
+"39","39222+39065+39418","Fay-en-Montagne + Bonnefontaine + Picarreau","6jb7g3nk0hs8","calé","0.61","0.73","10000",ok
+"39","39162","Condamine","3Pplan1818","calé","0.6","0.8","9900",ok
+"39","39327","Messia-sur-Sorne","nqxg714cr0js","calé","0.6","0.77","5000",approx
+"39","39186","Cuttura","jg4mkc6vn9xp","calé","0.59","0.78","10000",ok
+"39","39114","Château-Chalon","3Pplan1286","calé","0.58","0.7","10000",ok
+"39","39509","Senaud","2xmrbwdnhpz1","calé","0.58","0.76","10000",ok
+"39","39005","Abergement-Saint-Jean","l68drj54p9kg","calé","0.58","0.8","9900",ok
+"39","39100+39054","Champrougier + Biefmorin","w4crz5sxg1d6","calé","0.58","0.67","10000",approx
+"39","39090","Chaînée-des-Coupis","z0sp4xc97kgb","calé","0.58","0.78","9900",ok
+"39","39476","Saint-Aubin","3Pplan5245","calé","0.57","0.71","10000",approx
+"39","39382","Nantey","6k1j3fzg4xcm","calé","0.57","0.74","10000",ok
+"39","39494+39126","Saint-Pierre + La Chaumusse","gjv3lfd2t7w4","calé","0.57","0.65","9900",ok
+"39","39440","Pratz","h8qtgs269ld5","calé","0.57","0.71","9900",ok
+"39","39135","Chazelles","p9chfq56s02g","calé","0.57","0.78","9900",ok
+"39","39245","Gatey","3Pplan2613","calé","0.56","0.72","10000",approx
+"39","39195","Dessia","2tlfnmb56wjh","calé","0.56","0.77","5000",approx
+"39","39542","Valfin-sur-Valouse","gvlk21dj39bt","calé","0.56","0.68","10000",ok
+"39","39365+39546","Mont-sous-Vaudrey + Vaudrey","9pvdhwm15zcx","calé","0.56","0.68","10000",approx
+"39","39204","Dramelay","3Pplan2264","calé","0.55","0.66","10000",ok
+"39","39072+39084+39155+39248+39497+39500","Bracon + Cernans + Clucy + Geraise + Saizenay + Salins-les-Bains","ndtv586l40q7","calé","0.55","0.61","9900",approx
+"39","39050+39336","Besain + Molain","rznmwpt1d6cs","calé","0.55","0.66","10000",ok
+"39","39290","Légna","80m7srvc53hn","calé","0.55","0.69","10000",ok
+"39","39089+39137+39148+39247+39483+39583","Cézia + Chemilla + Chisséria + Genod + Saint-Hymetière + Vosbles","21dkvb9jn4sh","calé","0.55","0.64","9900",
+"39","39332","Mirebel","4spchr61vkwg","calé","0.55","0.66","9900",ok
+"39","39450","Ranchette","hpmqr1jx7cdw","calé","0.54","0.81","5000",ok
+"39","39258","Grande-Rivière","x2g0cwvfhkjr","calé","0.54","0.64","9900",ok
+"39","39023","L'Aubépin","g6v31cwblhdm","calé","0.54","0.71","10000",ok
+"39","39139+39429","Chêne-Bernard + Pleure","b8hq5mkgncwz","calé","0.53","0.65","10000",ok
+"39","39506","Savigna","593r8v7jqhw0","calé","0.53","0.67","9900",ok
+"39","39566","Villeneuve-lès-Charnod","tg7rq6k2cfmh","calé","0.53","0.75","5000",approx
+"39","39260","Granges-sur-Baume","qhzfnslv7bct","calé","0.53","0.68","10000",ok
+"39","39045","Beffia","3Pplan511","calé","0.52","0.76","10000",ok
+"39","39287","Lavans-sur-Valouse","972c0r8wkf3g","calé","0.52","0.68","10000",ok
+"39","39474+39064+39088+39309+39576","Sainte-Agnès + Bonnaud + Cesancey + Mallerey + Vincelles","bq65c2rnm849","calé","0.52","0.62","10000",ok
+"39","39578","Viremont","hck70r18d3ms","calé","0.52","0.73","9900",ok
+"39","39346","Montagna-le-Reconduit","3Pplan3840","calé","0.51","0.71","9900",ok
+"39","39484","Saint-Jean-d'Étreux","zwm5hks8fxnb","calé","0.51","0.68","9900",ok
+"39","39008+39285+39465+39584","Amange + Lavans-lès-Dole + Romange + Vriange","sx09djhzbk4t","calé","0.51","0.59","10000",ok
+"39","39485","Saint-Julien","kpfh1tcxz7qb","calé","0.5","0.62","10000",ok
+"39","39328+39179","Meussia + Crenans","29rlsckhz63w","calé","0.5","0.62","9900",ok
+"39","39037+39520","Bans + Souvans","pkzrm2cjqd8t","calé","0.5","0.61","9900",approx
+"39","39243","Froideville","mtl1036z8kxr","calé","0.5","0.67","10000",approx
+"39","39216+39184","Étival + Les Crozets","cdwnbfj92xl3","calé","0.49","0.62","9900",ok
+"39","39294","Lézat","h6b4m3psj8wn","calé","0.49","0.65","10100",ok
+"39","39040+39094+39127+39426+39548","Barretaine + Chamole + Chaussenans + Plasne + Vaux-sur-Poligny","kq6m5rngch2l","calé","0.49","0.58","9900",ok
+"39","39226","Florentia","tc4v2fwmxhd0","calé","0.49","0.75","5000",approx
+"39","39004+39202+39291+39359","Abergement-lès-Thésy + Dournon + Lemuy + Montmarlon","mh43kw7b8gc6","calé","0.49","0.58","10000",approx
+"39","39295","Loisia","3Pplan3166","calé","0.48","0.67","9900",approx
+"39","39043+39395+39467+39549","Beaufort + Orbagna + Rotalier + Vercia","m1bg4wfps580","calé","0.48","0.56","10000",ok
+"39","39123","Chatonnay","xqpzw2ms6c17","calé","0.48","0.64","10000",ok
+"39","39022","Asnans","8bmg94c7ftkw","calé","0.48","0.61","10000",approx
+"39","39177","Crançot","0bclf1wh4qdj","calé","0.48","0.63","10000",
+"39","39006+39315+39444","Aiglepierre + Marnoz + Pretin","1t43rvd5ml9w","calé","0.48","0.59","10000",approx
+"39","39489","Saint-Lothain","3Pplan5434","calé","0.47","0.6","10000",ok
+"39","39523","Syam","3Pplan5854","calé","0.47","0.65","10000",ok
+"39","39564","Villechantria","htqx0n1m74fc","calé","0.47","0.68","5000",
+"39","39025+39320","Augea + Maynal","jdgbl9pv1cw3","calé","0.47","0.58","9900",ok
+"39","39125","Chaumont","9tnvdm4wl52r","calé","0.45","0.62","9900",ok
+"39","39371","La Mouille","nhplw758bvx3","calé","0.45","0.6","9900",approx
+"39","39014+39030+39262+39270+39323+39449","Archelange + Authume + Gredisans + Jouhe + Menotey + Rainans","lhdx5gw7f0v4","calé","0.44","0.53","9800",ok
+"39","39224","Fétigny","2f1hm7snc5vd","calé","0.44","0.61","10000",ok
+"39","39073+39354+39535+39580","Brainans + Montholier + Tourmont + Le Viseney","qv4rl6fp5km3","calé","0.44","0.52","9900",ok
+"39","39569","Villers-Farlay","fmksbqtvwlxg","calé","0.44","0.58","9900",approx
+"39","39187","Cuvier","3Pplan2080","calé","0.43","0.6","10000",approx
+"39","39144","Chevry","3l7f2sc1vm40","calé","0.43","0.71","5000",ok
+"39","39061","Boissia","qvtmk9prwbsl","calé","0.43","0.57","9900",ok
+"39","39049+39159+39067+39386","Bersaillin + Colonne + Le Bouchaud + Neuvilley","thb8xw7vd3k0","calé","0.43","0.52","9900",ok
+"39","39399","Ounans","0rxf61s3tljz","calé","0.43","0.57","9900",approx
+"39","39586+39133+39147+39436+39267","Aresches + Champagny (dans 39133) + Chilly-sur-Salins + Fonteny (dans 39436) + Ivory","bqpv7jm5z0lh","calé","0.42","0.5","10000",
+"39","39232+39271","Fort-du-Plasne + Lac-des-Rouges-Truites","p0dfclq6hv7r","calé","0.42","0.56","9900",
+"39","39238","Frasne","b256hdlvx43z","calé","0.42","0.6","10000",
+"39","39154","Clairvaux-les-Lacs","t5qb7xj1mdz0","calé","0.42","0.52","9900",ok
+"39","39017","Arlay","3Pplan200","calé","0.41","0.55","8400",ok
+"39","39021+39027+39264+39488","Arthenas + Augisey + Grusse + Saint-Laurent-la-Roche","lw9p5b402kh3","calé","0.41","0.5","10000",ok
+"39","39438","Ponthoux","fd4rmcp2t0w7","calé","0.41","0.65","5000",ok
+"39","39036","La Balme-d'Épy","wqvjbn295lh8","calé","0.41","0.74","5000",approx
+"39","39263+39003+39081","Grozon + Abergement-le-Petit + Buvilly","l4bdjmx73vp0","calé","0.4","0.51","9900",ok
+"39","39339","Molinges","c523lvb9zt40","calé","0.4","0.63","5000",ok
+"39","39042+39078+39121+39462","Baverans + Brevans + Châtenois + Rochefort-sur-Nenon","c4k26zvtj5r8","calé","0.39","0.46","10000",ok
+"39","39368","Morez","phcq1r7ml5kz","calé","0.39","0.53","10000",ok
+"39","39376","Moutoux","3Pplan4167","calé","0.38","0.66","10000",approx
+"39","39038","Barésia-sur-l'Ain","1mq4g093lr5c","calé","0.38","0.53","9900",ok
+"39","39491","Saint-Lupicin","7rfhz0dn9kmw","calé","0.38","0.5","10000",approx
+"39","39493","Crillat (dans 39493)","2gf6lqcds4kn","calé","0.36","0.49","8900",ok
+"39","39273","Lains","32m194vcwkjs","calé","0.35","0.47","5000",approx
+"39","39161","Communailles-en-Montagne","5wh3slxq0t62","calé","0.35","0.58","5000",approx
+"39","39218","Étrepigney","3Pplan2374","calé","0.34","0.58","10000",ok
+"39","39411","Perrigny","3Pplan4520","calé","0.34","0.51","9900",approx
+"39","39026+39305","Augerans + La Loye","d7pqlz20w8mk","calé","0.34","0.47","9900",approx
+"39","39425","Les Planches-près-Arbois","l5x0knj341s9","calé","0.34","0.54","5000",approx
+"39","39544","Varessia","tmfjnkvxg194","calé","0.34","0.55","10000",approx
+"39","39442+39417+39130","Prénovel + Les Piards + Chaux-des-Prés","2bp0l48sx7jt","calé","0.34","0.45","9900",ok
+"39","39213","Esserval-Combe","dsgtzkj97vp8","calé","0.34","0.51","9900",approx
+"39","39482","Saint-Germain-lès-Arlay","pcrq6wbh5814","calé","0.33","0.55","9900",approx
+"39","39300","Lons-le-Saunier","9px5gcrv7h3k","calé","0.33","0.46","9900",approx
+"39","39307+39175","Maisod + Coyron","3p248rn9t1c0","calé","0.33","0.43","9900",ok
+"39","39152","Cinquétral","lm87c5x69hwg","calé","0.31","0.42","9900",approx
+"39","39414","Le Petit-Mercey","5bgh8vq0fdls","calé","0.3","0.61","4500",approx
+"39","39168","Courbette","3Pplan1876","calé","0.29","0.51","5000",approx
+"39","39574","Villevieux","3Pplan6422","calé","0.29","0.43","10000",faux
+"39","39002","Abergement-le-Grand","3Pplan6","calé","0.28","0.52","5000",
+"39","39403","Pagnoz","3Pplan4459","calé","0.28","0.44","5100",approx
+"39","39188","Dammartin","dgx4fn6zkcp8","calé","0.28","0.38","10000",approx
+"39","39577","Vincent","wh1r0dbslnq2","calé","0.28","0.43","9900",approx
+"39","39470","Les Rousses","tdmrw2blsvk6","calé","0.27","0.4","10000",approx
+"39","39424","Planches-en-Montagne","3Pplan4662","calé","0.26","0.38","9900",approx
+"39","39113","Chassal","kcp3d4hx9l07","calé","0.25","0.4","5000",faux
+"39","39524","Tancua","px9s187kvnq6","calé","0.25","0.58","10000",ok
+"39","39379","Nance","3Pplan4193","calé","0.24","0.35","10000",approx
+"39","39502+39117+39249","Santans + Chatelay + Germigney","f3nk8qdml51p","calé","0.24","0.56","9900",ok
+"39","39158+39163","Coisia + Condes","8cq31r6jknfv","calé","0.23","0.33","10000",ok
+"39","39562","Villard-sur-Bienne","x32hgbq7c6vf","calé","0.23","0.5","10000",approx
+"39","39194","Desnes","3Pplan2146","calé","0.22","0.36","10100",approx
+"39","39530","Thoirette","9zn1fqhgkd08","calé","0.22","0.37","10000",approx
+"39","39385","Neublans","9f8zsd0xpt5m","calé","0.21","0.44","10100",
+"39","39059","Bois-d'Amont","dxczqk8nst4g","calé","0.21","0.43","10000",
+"39","39215","Essia","jt94s87glrc1","calé","0.2","0.45","9900",
+"39","39250","Geruge","3Pplan2665","calé","0.19","0.4","5000",
+"39","39445","Publy","3Pplan4922","calé","0.19","0.27","10000",faux
+"39","39115","Château-des-Prés","1z8fv9md6cj2","calé","0.19","0.45","10000",
+"39","39370","Mouchard","3Pplan6997","calé","0.18","0.32","5100",approx
+"39","39299","Longwy-sur-le-Doubs","3Pplan3295","calé","0.17","0.3","10000",approx
+"39","39372","Mournans","9j4qpzfbs5v7","calé","0.17","0.28","10000",faux
+"39","39259","Grange-de-Vaivre","3Pplan2781","calé","0.16","0.4","5000",
+"39","39018","Ceffia (dans 39018)","q4dgw5tz2vb1","calé","0.15","0.25","10000",faux
+"39","39039","La Barre","pf8zcl6w7x5h","probable","0.13","0.3","5000",approx
+"39","39517","Treffay (dans 39517)","mkfbw3x89hc6","probable","0.12","0.21","10100",faux
+"39","39102+39289+39351+39318","Chancia + Lect + Montcusel + Martigna","8nb5l10w7h4z","probable","0.11","0.21","10000",approx
+"39","39424","La Perrena (dans 39424)","0dwj936cf2hq","à vérifier","0.08","0.17","9800",approx
+"39","39010","Andelot-lès-Saint-Amour","83nb5hd94rc0","à vérifier","0.04","0.22","9900",faux
+"39","39553","Vernois","3Pplan6209","à vérifier","0.03","0.25","10000",faux
+"39","39069","Bourcia","shx813m0tbkv","à vérifier","0.03","0.17","10000",faux
+"39","39370","Certémery (dans 39370)","7rtk0l2m63z4","à vérifier","0.03","0.15","12500",faux
+"39","39075","Bréry","cx9sr7kfbp8w","à vérifier","0.03","0.25","10000",faux
+"39","39333+39561","Moirans-en-Montagne + Villards-d'Héria","cqv681swzpr4","à vérifier","0.03","0.12","10300",approx
+"39","39331","Essavilly (dans 39331)","gpn5tl6z1kw2","à vérifier","0.02","0.06","10300",faux
+"39","39044","Beauvoisin","fr64t5k2pwh8","à vérifier","0.02","0.14","10200",faux
+"39","39479","Montmalin (dans 39479)","71glhb3d0r6c","à vérifier","0.02","0.19","10300",faux
+"39","39198","Saint-Ylie (dans 39198)","52w3nsxm9jp0","à vérifier","0.02","0.11","9700",faux
+"39","39341","Les Molunes","3grv2qw4bnks","à vérifier","0.02","0.1","9800",faux
+"39","39397","Le Bourget (dans 39397)","4b2r1dmwsqz3","à vérifier","0.01","0.07","12500",faux
+"39","39313","Villard-sur-l'Ain (dans 39313)","3rmk1qpvj9bh","à vérifier","0.01","0.12","12300",faux
+"39","39461","Rix","8wnvb31pmzlr","à vérifier","0.01","0.15","10300",faux
+"39","39283","Lavancia","vtnpkdjlqc17","à vérifier","0.01","0.16","11200",faux
+"39","39579","Sièges (dans 39579)","qk35nf0jvmh6","à vérifier","0.01","0.07","9700",faux
+"39","39269+39561","Jeurre + Grand-Châtel (dans 39561)","fm75gnt8wlhz","à vérifier","0.01","0.14","11900",faux
+"39","39441","Prémanon","3Pplan4838","à vérifier","0.0","0.1","12500",faux
+"39","39209","Lanéria (dans 39209)","k0t5gf12srm3","à vérifier","0.0","0.18","12000",faux
+"39","39303","Louvenne","c908sb4hnv2k","à vérifier","0.0","0.16","10100",faux
+"39","39504","Marangea (dans 39504)","zc8rq6mpnx5g","à vérifier","0.0","0.12","10100",faux
+"39","39510","Septmoncel","wtpbmjq193gd","à vérifier","0.0","0.09","10300",faux
