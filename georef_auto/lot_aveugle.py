@@ -77,6 +77,90 @@ def catalogue(dept, contours):
     return uniq
 
 
+def _noms_du_titre(commune, titre):
+    """Communes couvertes par un TA, d'après la notice archives39 :
+    « Abergement-les-Thézy,Dournon,Lemuy, Montmarlon-les-Thézy, tableaux d'assemblage, … » ;
+    « Tableau d'assemblage des communes de Baverans, Brevans, Châtenois, Rochefort. » ;
+    nœud « Arthenas » + titre « Tableau d'assemblage commun à Augisey, Grusse et … »."""
+    m = re.search(r"[eé]tait celui de la commune de ([^.,;]+)", titre)
+    if m:                                    # Bourcia avant 1822 = Civria ou Dancia
+        return [m.group(1).strip()]
+    m = re.match(r"^(.*?)[\s,.-]*tableaux? d.assemblage", titre, re.I)
+    tete = m.group(1) if m else ""
+    if not tete:
+        m = re.search(r"(?:commun(?:es)? à|des communes d[e'’])\s*(.+?)(?:[.,]\s*(?:canton|Date|g[ée]om)|\.?$)", titre, re.I)
+        tete = m.group(1) if m else ""
+        if commune and not re.match(r"(tableau|plans?|feuilles?) ", commune, re.I):
+            tete = commune + ", " + tete
+    tete = tete.split(";")[0]
+    return [n.strip(" .") for n in re.split(r"\s*[,&]\s*|\s+et\s+", tete) if n.strip(" .")]
+
+
+def catalogue_sans_insee(dept, contours):
+    """TA du seed sans INSEE (harvest/seed_jura_sans_insee.tsv) : TA communs à plusieurs communes
+    et noms anciens. insee = codes joints par « + » ; image résolue par la notice archives39."""
+    import sys
+    from contours_ign import resoudre_nom
+    if dept != "39":
+        raise SystemExit("--sans-insee : seul le Jura est câblé")
+    sys.path.insert(0, str(ROOT / "harvest"))
+    import harvest_jura as hj
+    hj.prime()
+    idx = contours.index_cog(dept)
+    out, vus = [], set()
+    for line in (ROOT / "harvest/seed_jura_sans_insee.tsv").read_text(encoding="utf-8").splitlines()[1:]:
+        commune, titre, url = (line.split("	") + ["", "", ""])[:3]
+        if "assemblage" not in titre.lower():
+            continue
+        noms = _noms_du_titre(commune, titre)
+        hits = {n: resoudre_nom(n, idx) for n in noms}
+        # homonymes (Lavans, Chilly, Vaux…) : le plus proche des autres communes du même TA
+        surs = [h[0][0] for h in hits.values() if len(h) == 1]
+        pts = [p for p in (centre_de(contours, c) for c in surs) if np.isfinite(p).all()]
+        centre = np.mean(pts, axis=0) if pts else None
+        codes, libelles, manquants = [], [], []
+        for n, hit in hits.items():
+            if len(hit) > 1 and centre is not None:
+                hit = [min(hit, key=lambda h: np.hypot(*(centre_de(contours, h[0]) - centre)))]
+            if len(hit) == 1 and not np.isfinite(centre_de(contours, hit[0][0])).all():
+                # fusion sans trace au cadastre (Champagny -> Chaux-Champagny, 1973) : l'héritière
+                h = contours.heritiere(hit[0][0])
+                hit = [(h, f"{hit[0][1]} (dans {h})")] if h else []
+            if len(hit) == 1:
+                if hit[0][0] not in codes:
+                    codes.append(hit[0][0])
+                    libelles.append(hit[0][1])
+            else:
+                manquants.append(n)
+        ark = hj.ark_of(url)
+        d = dict(insee="+".join(codes), commune=" + ".join(libelles) or commune, cote=ark or "", image_url="")
+        if manquants or not codes:
+            d["statut"] = "nom non résolu : " + ", ".join(manquants or noms or [commune])
+        else:
+            jpg, _, _ = hj.media_of({"ark": ark})
+            d["image_url"] = jpg or ""
+            if not jpg:
+                d["statut"] = "image introuvable"
+        if (d["insee"], d["image_url"]) not in vus:
+            vus.add((d["insee"], d["image_url"]))
+            out.append(d)
+    # notice sans lien média : media_of retombe sur un uuid générique, commun à plusieurs TA
+    from collections import Counter
+    n_img = Counter(d["image_url"] for d in out if d["image_url"])
+    for d in out:
+        if n_img.get(d["image_url"], 0) > 1 and not d.get("statut"):
+            d["statut"] = "image introuvable (uuid partagé par plusieurs notices)"
+    return out
+
+
+def centre_de(contours, code):
+    """Centre (L93) d'une commune ancienne, pour départager les homonymes."""
+    try:
+        return np.vstack(contours.contour("a" + code)).mean(0)
+    except LookupError:
+        return np.array([np.inf, np.inf])
+
+
 def apercu(img, M_px_l93, rings, statut, texte, chemin, largeur=1400):
     """Image réduite + contour IGN posé (pose pixel 2000 px -> L93 inversée)."""
     f = largeur / img.shape[1]
@@ -94,66 +178,100 @@ def apercu(img, M_px_l93, rings, statut, texte, chemin, largeur=1400):
 
 
 COLS = ["dept", "insee", "commune", "cote", "statut", "contraste", "ecart_2e", "couverture", "angle_deg",
-        "m_par_px_plein", "echelle_deduite", "largeur_px", "duree_s", "pose_plein_l93", "image_url", "apercu"]
+        "m_par_px_plein", "echelle_deduite", "echelles", "largeur_px", "duree_s", "pose_plein_l93", "image_url", "apercu"]
+
+
+def code_contour(insee, ancienne=True):
+    """« 39017 » -> « a39017 » : contour de la commune à l'époque du TA (communes absorbées depuis
+    retirées, voir contours_ign) ; « 39005+39190 » (TA commun) -> « a39005+a39190 »."""
+    return "+".join(("a" if ancienne else "") + c for c in insee.split("+"))
+
+
+def reglages(args):
+    """Paramètres de recaler_image passés en ligne de commande."""
+    return dict(pas_angle=args.pas_angle, diam_min=args.diam_min, saturation=args.saturation, debord=args.debord)
+
+
+def traiter_un(d, args, out):
+    """Recale un TA (dict du catalogue) et renvoie la ligne du CSV."""
+    src = Contours(args.contours, HERE / "sortie_chanfrein/cache_contours")      # contour à poser
+    denoms = [int(x) for x in args.denominateurs.split(",")]
+    row = dict(dept=args.dept, **d)
+    if row.get("statut"):                    # catalogue : nom non résolu, pas d'image
+        return row
+    t0 = time.time()
+    try:
+        # TA sans INSEE : deux TA peuvent couvrir les mêmes communes (Essavilly, Froidefontaine -> 39331)
+        ident = f"{args.dept}_{d['insee']}" + (f"_{d['cote']}" if args.sans_insee else "")
+        m = dict(id=ident, service=WORKER + quote(d["image_url"], safe=""))
+        path, w = fetch_image(m, 2000, out / "images")
+        img = cv2.imdecode(np.fromfile(str(path), dtype=np.uint8), cv2.IMREAD_COLOR)
+        rings = src.contour(code_contour(d["insee"], not args.contour_actuel))
+        # échelles candidates en m/px de l'image 2000 px : la pleine résolution est inconnue
+        # ici (pas de manifeste lu) -> on la lit dans info.json
+        full_w = largeur_pleine(m["service"]) or w
+        k = full_w / w
+        ech = [dd * 0.0254 / args.dpi * j * k for dd in denoms for j in (0.97, 1.0, 1.03)]
+        r = recaler_image(img, rings, ech, **reglages(args))
+        row["echelles"] = "fonds"
+        if args.relance and (r is None or r["statut"] != "calé"):
+            # quelques feuilles sont numérisées à une autre résolution que le reste du fonds
+            # (Arlay : ~163 dpi au lieu de 137,5) : relance sur une gamme ×0,8–×1,25
+            ech2 = [dd * 0.0254 / args.dpi * j * k for dd in denoms for j in np.geomspace(0.8, 1.25, 9)]
+            r2 = recaler_image(img, rings, ech2, **reglages(args))
+            if r2 is not None and (r is None or r2["ecart_2e"] > r["ecart_2e"]):
+                r, row["echelles"] = r2, "élargies"
+        if r is None:
+            row["statut"] = "aucune pose"
+        else:
+            mpx = r["m_par_px"] / k
+            M = r["M"] @ np.diag([1 / k, 1 / k, 1])
+            row.update(statut=r["statut"], contraste=round(r["contraste"], 2), ecart_2e=round(r["ecart_2e"], 2),
+                       couverture=round(r["couverture"], 2), angle_deg=round(r["angle_deg"], 1),
+                       m_par_px_plein=round(mpx, 3), echelle_deduite=int(round(mpx / 0.0254 * args.dpi, -2)),
+                       largeur_px=full_w, pose_plein_l93=json.dumps(np.round(M[:2], 6).tolist()))
+            ap = f"apercus/{ident}.jpg"
+            apercu(img, r["M"], rings, r["statut"],
+                   f"{d['commune']} ({d['insee']})  {r['statut']}  ecart {r['ecart_2e']:.2f}  1/{row['echelle_deduite']}",
+                   out / ap)
+            row["apercu"] = ap
+    except Exception as ex:  # noqa: BLE001
+        row["statut"] = f"erreur : {type(ex).__name__}: {ex}"[:160]
+    row["duree_s"] = round(time.time() - t0, 1)
+    print({k_: row.get(k_) for k_ in ("insee", "commune", "statut", "ecart_2e", "echelle_deduite", "duree_s")}, flush=True)
+    return row
 
 
 def traiter(args):
     out = Path(args.out)
     (out / "apercus").mkdir(parents=True, exist_ok=True)
-    cont = Contours("france-geojson", HERE / "sortie_contour/cache_contours")   # noms -> INSEE
-    src = Contours(args.contours, HERE / "sortie_chanfrein/cache_contours")      # contour à poser
-    cat = catalogue(args.dept, cont)
+    cont = (Contours(args.contours, HERE / "sortie_chanfrein/cache_contours") if args.sans_insee
+            else Contours("france-geojson", HERE / "sortie_contour/cache_contours"))   # noms -> INSEE
+    cat = catalogue_sans_insee(args.dept, cont) if args.sans_insee else catalogue(args.dept, cont)
     exclus = set(args.exclure.split(",")) if args.exclure else set()
     cat = [c for c in cat if c["insee"] not in exclus]
     rng = np.random.default_rng(args.seed)
     choix = [cat[i] for i in rng.permutation(len(cat))[:args.n]]
+    if args.insee:
+        voulus = args.insee.split(",")
+        choix = [c for c in cat if c["insee"] in voulus]
     print(f"{args.dept} : {len(cat)} TA au catalogue, {len(choix)} tirés", flush=True)
-    denoms = [int(d) for d in args.denominateurs.split(",")]
-    fichier = out / f"lot_{args.dept}.csv"
+    fichier = out / f"lot_{args.dept}{'_sans_insee' if args.sans_insee else ''}.csv"
     deja = {}
     if fichier.exists():
         deja = {r["insee"]: r for r in csv.DictReader(open(fichier, encoding="utf-8"))}
-    rows = []
-    for d in choix:
-        if d["insee"] in deja and deja[d["insee"]].get("statut"):
-            rows.append(deja[d["insee"]])
-            continue
-        row = dict(dept=args.dept, **d)
-        t0 = time.time()
-        try:
-            m = dict(id=f"{args.dept}_{d['insee']}", service=WORKER + quote(d["image_url"], safe=""))
-            path, w = fetch_image(m, 2000, out / "images")
-            img = cv2.imdecode(np.fromfile(str(path), dtype=np.uint8), cv2.IMREAD_COLOR)
-            rings = src.contour(d["insee"])
-            # échelles candidates en m/px de l'image 2000 px : la pleine résolution est inconnue
-            # ici (pas de manifeste lu) -> on la lit dans info.json
-            full_w = largeur_pleine(m["service"]) or w
-            k = full_w / w
-            ech = [dd * 0.0254 / args.dpi * j * k for dd in denoms for j in (0.97, 1.0, 1.03)]
-            r = recaler_image(img, rings, ech, pas_angle=args.pas_angle)
-            if r is None:
-                row["statut"] = "aucune pose"
-            else:
-                mpx = r["m_par_px"] / k
-                M = r["M"] @ np.diag([1 / k, 1 / k, 1])
-                row.update(statut=r["statut"], contraste=round(r["contraste"], 2), ecart_2e=round(r["ecart_2e"], 2),
-                           couverture=round(r["couverture"], 2), angle_deg=round(r["angle_deg"], 1),
-                           m_par_px_plein=round(mpx, 3), echelle_deduite=int(round(mpx / 0.0254 * args.dpi, -2)),
-                           largeur_px=full_w, pose_plein_l93=json.dumps(np.round(M[:2], 6).tolist()))
-                ap = f"apercus/{args.dept}_{d['insee']}.jpg"
-                apercu(img, r["M"], rings, r["statut"],
-                       f"{d['commune']} ({d['insee']})  {r['statut']}  ecart {r['ecart_2e']:.2f}  1/{row['echelle_deduite']}",
-                       out / ap)
-                row["apercu"] = ap
-        except Exception as ex:  # noqa: BLE001
-            row["statut"] = f"erreur : {type(ex).__name__}: {ex}"[:160]
-        row["duree_s"] = round(time.time() - t0, 1)
-        rows.append(row)
-        print({k_: row.get(k_) for k_ in ("insee", "commune", "statut", "ecart_2e", "echelle_deduite", "duree_s")}, flush=True)
-        with open(fichier, "w", newline="", encoding="utf-8") as f:
-            wr = csv.DictWriter(f, COLS, extrasaction="ignore")
-            wr.writeheader()
-            wr.writerows(rows)
+    a_faire = [d for d in choix if not (d["insee"] in deja and deja[d["insee"]].get("statut"))]
+    if args.jobs > 1:
+        from concurrent.futures import ProcessPoolExecutor
+        with ProcessPoolExecutor(args.jobs) as ex:
+            faits = dict(zip([d["insee"] for d in a_faire], ex.map(traiter_un, a_faire, [args] * len(a_faire), [out] * len(a_faire))))
+    else:
+        faits = {d["insee"]: traiter_un(d, args, out) for d in a_faire}
+    rows = [faits.get(d["insee"]) or deja[d["insee"]] for d in choix]
+    with open(fichier, "w", newline="", encoding="utf-8") as f:
+        wr = csv.DictWriter(f, COLS, extrasaction="ignore")
+        wr.writeheader()
+        wr.writerows(rows)
     for s in ("calé", "probable", "à vérifier"):
         print(f"{s:>10} : {sum(r.get('statut') == s for r in rows)}/{len(rows)}")
 
@@ -173,18 +291,18 @@ def largeur_pleine(service):
     return _info[service]
 
 
-def reapercus(out, contours="pci"):
+def reapercus(out, contours="pci", ancienne=True):
     """Redessine les aperçus depuis les poses du CSV (images et contours en cache)."""
     src = Contours(contours, HERE / "sortie_chanfrein/cache_contours")
     for f in sorted(Path(out).glob("lot_*.csv")):
         for r in csv.DictReader(open(f, encoding="utf-8")):
             if not r.get("apercu"):
                 continue
-            img = cv2.imdecode(np.fromfile(str(Path(out) / "images" / f"{r['dept']}_{r['insee']}.jpg"), dtype=np.uint8),
+            img = cv2.imdecode(np.fromfile(str(Path(out) / "images" / Path(r["apercu"]).name), dtype=np.uint8),
                                cv2.IMREAD_COLOR)
             k = int(r["largeur_px"]) / img.shape[1]
             M = np.vstack([np.array(json.loads(r["pose_plein_l93"])), [0, 0, 1]]) @ np.diag([k, k, 1])
-            apercu(img, M, src.contour(r["insee"]), r["statut"],
+            apercu(img, M, src.contour(code_contour(r["insee"], ancienne)), r["statut"],
                    f"{r['commune']} ({r['insee']})  {r['statut']}  ecart {r['ecart_2e']}  1/{r['echelle_deduite']}",
                    Path(out) / r["apercu"])
 
@@ -197,7 +315,7 @@ def page(out):
     rows.sort(key=lambda r: (r["dept"], ordre.get(r["statut"], 3), -float(r["ecart_2e"] or 0)))
     cartes = []
     for r in rows:
-        cle = f"{r['dept']}_{r['insee']}"
+        cle = Path(r["apercu"]).stem
         cartes.append(f"""
 <article class="carte s{ordre.get(r['statut'], 3)}" data-cle="{cle}">
   <header><b>{html.escape(r['commune'])}</b> <span>{r['insee']} · {html.escape(r['cote'])}</span>
@@ -210,7 +328,7 @@ def page(out):
     <label><input type="radio" name="{cle}" value="hs"> pas un TA / illisible</label>
   </div>
 </article>""")
-    donnees = json.dumps({f"{r['dept']}_{r['insee']}": {k: r[k] for k in ("dept", "insee", "commune", "cote", "statut", "ecart_2e", "contraste", "echelle_deduite")} for r in rows}, ensure_ascii=False)
+    donnees = json.dumps({Path(r["apercu"]).stem: {k: r[k] for k in ("dept", "insee", "commune", "cote", "statut", "ecart_2e", "contraste", "echelle_deduite")} for r in rows}, ensure_ascii=False)
     Path(out, "validation.html").write_text(f"""<!doctype html>
 <html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Validation géoréf auto</title>
@@ -254,6 +372,17 @@ def main():
     ap.add_argument("--dpi", type=float, default=300)
     ap.add_argument("--denominateurs", default="5000,10000,20000")
     ap.add_argument("--pas-angle", type=float, default=2.0)
+    ap.add_argument("--diam-min", type=float, default=0.10, help="lot initial : 0.25")
+    ap.add_argument("--saturation", type=float, default=0.3, help="0 = carte de traits brute (lot initial)")
+    ap.add_argument("--debord", type=float, default=0.1, help="lot initial : 0")
+    ap.add_argument("--insee", default="", help="ne traiter que ces INSEE (liste, pris dans tout le catalogue)")
+    ap.add_argument("--jobs", type=int, default=1, help="plans traités en parallèle")
+    ap.add_argument("--sans-insee", action="store_true",
+                    help="TA du Jura sans INSEE (TA communs, noms anciens) : harvest/seed_jura_sans_insee.tsv")
+    ap.add_argument("--sans-relance", dest="relance", action="store_false",
+                    help="pas de 2e passe à échelles élargies pour les plans non calés")
+    ap.add_argument("--contour-actuel", action="store_true",
+                    help="contour de la commune actuelle, communes absorbées depuis comprises (lot initial)")
     ap.add_argument("--exclure", default="", help="INSEE à écarter (déjà en vérité terrain)")
     ap.add_argument("--out", default="sortie_lot")
     ap.add_argument("--contours", default="pci", help="pci (Parcellaire Express) | wfs | france-geojson")
@@ -264,7 +393,7 @@ def main():
             ap.error("--dept requis")
         traiter(args)
     else:
-        reapercus(args.out, args.contours)
+        reapercus(args.out, args.contours, not args.contour_actuel)
     page(args.out)
 
 

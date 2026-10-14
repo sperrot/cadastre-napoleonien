@@ -43,5 +43,6 @@ georef_auto/sortie_mare*/
 georef_auto/synth*/
 georef_auto/sortie_contour*/
 georef_auto/sortie_chanfrein*/
-georef_auto/sortie_lot/
+georef_auto/sortie_lot*/
+georef_auto/sortie_*.log
 georef_auto/cache_contours/
