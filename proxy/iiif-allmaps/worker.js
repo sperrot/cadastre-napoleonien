@@ -120,9 +120,21 @@ function largeurDemandee(suffix) {
   return null;   // full, max, ,H : image entière
 }
 
+/** fetch qui retente (backoff) quand l'origine refuse ou sature (429, 5xx) : le serveur de tuiles
+ *  Allmaps demande des dizaines d'images d'un coup quand une tuile couvre beaucoup de plans. */
+async function fetchRetente(url, init = {}, essais = 3) {
+  let r = null;
+  for (let i = 0; i < essais; i++) {
+    r = await fetch(url, init);
+    if (r.ok || (r.status !== 429 && r.status < 500)) return r;
+    await new Promise((ok) => setTimeout(ok, 400 * 3 ** i));
+  }
+  return r;
+}
+
 async function fetchJpegDimensions(url) {
   try {
-    const r = await fetch(url, {
+    const r = await fetchRetente(url, {
       headers: headersFor(url, { "Range": "bytes=0-65535" }),
     });
     const buf = await r.arrayBuffer();
@@ -301,28 +313,29 @@ export default {
         // toute requête d'image → l'image entière, réduite si une taille est demandée
         let corps = null, type = "image/jpeg";
         let largeur = largeurDemandee(suffix);
-        if (largeur) {
+        if (largeur < 0) {   // pct:n — seul cas où il faut les dimensions de l'original
           const { w } = await fetchJpegDimensions(candidats[0]);
-          if (largeur < 0) largeur = Math.ceil(w * -largeur / 100);
-          // niveau annoncé immédiatement supérieur : au plus 5 transformations uniques par image
-          const s = REDUCTIONS.slice().reverse().find((f) => Math.ceil(w / f) >= largeur) || 1;
-          if (s > 1) {
-            const red = await fetch(candidats[0], {
-              headers: headersFor(candidats[0]),
-              cf: { image: { width: Math.ceil(w / s), fit: "scale-down", quality: 82, format: "jpeg" },
-                    cacheEverything: true, cacheTtl: 2592000 },
-            });
-            // une transformation qui échoue (image hors limites…) retombe sur l'original
-            if (red.ok && (red.headers.get("content-type") || "").startsWith("image/")) {
-              corps = red.body;
-              type = red.headers.get("content-type");
-            }
+          largeur = Math.ceil(w * -largeur / 100);
+        }
+        if (largeur) {
+          // Pas de lecture des dimensions ici (un appel de moins à l'origine) : le serveur de tuiles
+          // demande les tailles annoncées dans info.json, donc au plus 4 réductions par image.
+          // scale-down : une largeur >= l'original rend l'original.
+          const red = await fetchRetente(candidats[0], {
+            headers: headersFor(candidats[0]),
+            cf: { image: { width: largeur, fit: "scale-down", quality: 82, format: "jpeg" },
+                  cacheEverything: true, cacheTtl: 2592000 },
+          });
+          // une transformation qui échoue (image hors limites…) retombe sur l'original
+          if (red.ok && (red.headers.get("content-type") || "").startsWith("image/")) {
+            corps = red.body;
+            type = red.headers.get("content-type");
           }
         }
         if (!corps) {
           let rr = null;
           for (const c of candidats) {
-            rr = await fetch(c, { headers: headersFor(c) });
+            rr = await fetchRetente(c, { headers: headersFor(c) });
             if (rr.ok) break;
           }
           if (!rr || !rr.ok) return bad(502, "image source: " + (rr ? rr.status : "?"));

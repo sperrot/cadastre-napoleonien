@@ -223,6 +223,10 @@ const OVERLAYS = {
     attribution:
       '<a href="https://allmaps.org" target="_blank" rel="noopener">Géoréférencement Allmaps</a>',
     opacity: 0.85,
+    // En dessous, une tuile couvre des centaines de plans (tout le Doubs au zoom 9) : le
+    // serveur de tuiles les demande d'un coup et la tuile part en erreur. Plans illisibles
+    // de toute façon à cette échelle.
+    minzoom: 10,
   },
 };
 
@@ -257,6 +261,7 @@ for (const [id, ov] of Object.entries(OVERLAYS)) {
     id: `overlay-${id}`,
     type: "raster",
     source: `ov-${id}`,
+    ...(ov.minzoom != null ? { minzoom: ov.minzoom } : {}),
     layout: { visibility: "none" },
     paint: { "raster-opacity": ov.opacity ?? 1 },
   });
