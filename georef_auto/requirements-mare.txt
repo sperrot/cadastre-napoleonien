@@ -1,0 +1,12 @@
+# Dépendances du banc test_mare.py (MaRE + nos scripts). Testé Python 3.13.
+numpy
+opencv-contrib-python-headless<5   # OpenCV 5 a retiré cv2.KAZE_create utilisé par MaRE
+pyproj
+scikit-image
+progressbar2
+dask[delayed]
+matplotlib
+requests
+osmtogeojson
+joblib
+annoy                             # sous Windows : nécessite les Build Tools C++ de Visual Studio

@@ -37,3 +37,12 @@ harvest/wfs_vigne_etatmajor.py
 
 # Depots de moisson Ligeo (TSV d arks, volumineux et regenerables)
 harvest/ligeo/depot/**/arks*.tsv
+
+# Sorties du banc de test MaRE (georef_auto/)
+georef_auto/sortie_mare*/
+georef_auto/synth*/
+georef_auto/sortie_contour*/
+georef_auto/sortie_chanfrein*/
+georef_auto/sortie_lot*/
+georef_auto/sortie_*.log
+georef_auto/cache_contours/

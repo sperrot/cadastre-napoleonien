@@ -1,0 +1,16 @@
+id,carte,insee,commune,n_gcp,rotation_vraie,angle_estime,methode,iou_enveloppe,part_inliers,statut,erreur_mediane_m,rmse_m,erreur_max_m,plancher_affine_m,duree_s
+258f6ed109ae27b5,FRAD025_3P178_01.jpg,25176,Courvières,21,0.1,0.2,,1.0,0.66,calé,14.4,18.6,31.3,12.5,8.1
+c26b2cc241446bda,FRAD088_3NUM3_88116_3P5056_1.jpg,88116,Cornimont,60,0.6,0.6,,1.0,1.0,calé,21.1,29.7,116.1,22.1,3.5
+d5b9f30c24c0baeb,FRAD025_3P122_01.jpg,25121,Chapelle-des-Bois,49,2.4,2.8,,1.0,0.94,calé,29.3,40.9,87.3,24.9,2.3
+140e7b2239d70ae1,FRAD025_3P623_01.jpg,25621,Villeneuve-d'Amont,5,23.1,22.2,,1.0,0.4,à vérifier,1877.9,1649.2,1912.7,42.0,14.0
+bc5c5914be984ad7,AD071_0362_3PA_07976_D.jpg,71362,Pruzilly,21,-30.6,-30.3,,1.0,0.69,calé,28.0,30.3,53.8,14.4,13.7
+3b55c34b8af7d73a,FRAD025_3P80_01.jpg,25079,Boujailles,42,0.5,0.4,,1.0,0.88,calé,26.0,28.8,59.8,24.1,8.0
+c1edb1ecf469017e,FRAD025_3P630_01.jpg,25627,Villers-sous-Chalamont,17,59.7,60.1,,1.0,0.82,calé,41.9,46.1,108.7,31.9,13.0
+e8b3151afc3abc7d,FRAD025_3P27_01.jpg,25026,Arc-sous-Montenot,8,0.0,0.0,,1.0,0.78,calé,47.7,49.5,72.7,43.7,7.3
+61f192b21527751a,FRAD088_3NUM3_88500_3P5440_1.jpg,88500,Ventron,41,-0.7,-0.7,,1.0,1.0,calé,22.6,23.9,53.0,14.7,3.3
+9c415b1a945ec557,FRAD095_3P_3290.jpg,95680,Villiers-le-Bel,42,-14.5,-14.1,,1.0,0.84,calé,21.4,23.9,48.1,15.3,4.1
+e679c9b32472a9a5,AD093CA_2047W_0049_C.jpg,93029,Drancy,3,-0.4,-103.0,,1.0,0.3,à vérifier,3014.6,3108.0,4271.9,,17.2
+63e92044763b459b,AD093CA_2047W_0121_C.jpg,93029,Drancy,6,0.6,1.0,,1.0,0.73,calé,17.0,36.3,81.7,19.2,4.6
+6bd7b1e39fcd1bb9,FRAD088_3NUM3_88451_3P5391_1.jpg,88451,Senones,9,90.8,-60.3,,1.0,0.28,à vérifier,4861.8,4897.1,6642.6,95.8,16.6
+e8393951d4797da8,AD093CA_2047W_0563_C.jpg,93071,Sevran,4,-2.3,4.0,,1.0,0.4,à vérifier,136.4,168.7,258.1,,9.3
+4c0880dbfa9d1438,AD093CA_2047W_0012_C.jpg,93005,Aulnay-sous-Bois,11,89.1,91.3,,1.0,0.66,calé,90.7,144.4,296.5,101.4,3.1
