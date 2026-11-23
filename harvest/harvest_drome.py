@@ -20,11 +20,22 @@ Même logiciel (Mnesys, Naoned) que le Jura → même API du plan de classement 
         → [{id, title, dataType: "branch"|"leaf",
             data:{children, isLoaded, url (ark), contentUrl}}]
 
-Racine connue : le « Cadre de classement des AD de la Drôme »
-(archdesc f6e10de9…, ark:/24626/1r85jlbwtgfk). Le nœud du cadastre
-napoléonien n'a pas encore été relevé : `--find` le cherche (titres
-« cadastre », « 3 P », « napoléonien ») et l'affiche ; le passer ensuite en
-`--start <uuid>`.
+Fonds relevé dans un HAR (2026-11-23) : « Plans du cadastre napoléonien. »
+(an XI-1974), uuid f9796c5b…, ark:/24626/69437fsmbktg. C'est aussi la racine
+des identifiants de l'API ({nœud}_{f9796c5b…}). Arbre :
+
+    Plans du cadastre napoléonien.                  ← ROOT = START
+      Allex                                          ← commune (forme ancienne :
+        Cadastre parcellaire.                           Livron, Loriol, Aouste…)
+          « Tableau d'assemblage. »                  (leaf)
+          « Section A, Bayles (les). »               (leaf)
+      Cheylard (le)                                  ← parfois une feuille directe
+
+Planche (fragment /record/24626/<ark>/content, notice-0) : cote « 3 P 3256/1 »,
+date « 10 septembre 1811 », échelle « 1:20 000 » ; média
+/ark:/24626/<ark>/<uuid> (visionneuse), vignette /images/<uuid>_img-notice.jpg,
+image pleine supposée en /images/<uuid>.jpg (comme au Jura) → `--check`.
+Référence : Allex, TA — ark pd4386zn9s7j, média df229011-dc18-4b0f-bb17-0b894fe42ab0.
 
 Licence : les AD26 autorisent la réutilisation NON commerciale avec mention
 « Arch. dép. Drôme, <cote> » ; commerciale = licence avec redevance. Ce n'est
@@ -40,10 +51,9 @@ vérification TLS reste COMPLÈTE (jamais verify=False).
 
 Dépendances : pip install requests certifi
 Usage :
-    python harvest/harvest_drome.py --find                 # 1. trouver le nœud cadastre
-    python harvest/harvest_drome.py --check <ark>          # 2. calibrer sur 1 planche
-    python harvest/harvest_drome.py --start <uuid> --limit 20     # 3. essai
-    python harvest/harvest_drome.py --start <uuid>         # 4. corridor → seed_drome.sql
+    python harvest/harvest_drome.py --check                # 1. auto-test (Allex, TA)
+    python harvest/harvest_drome.py --limit 20             # 2. essai
+    python harvest/harvest_drome.py                        # 3. corridor → seed_drome.sql
     python harvest/load_seed_to_supabase.py --replace-dept 26 harvest/seed_drome.sql
 
 Si le portail renvoie un captcha au lieu du JSON : copier le cookie PHPSESSID
@@ -59,7 +69,6 @@ import sys
 import time
 import unicodedata
 import urllib.parse
-from collections import deque
 
 import requests
 
@@ -70,9 +79,13 @@ GEO_API = "https://geo.api.gouv.fr/communes"
 DEPT = "26"
 WORKER = "https://iiif-allmaps.sperrot.workers.dev"
 
-# « Cadre de classement des Archives départementales de la Drôme »
-ROOT = "f6e10de9-0e70-4023-8366-c625f2560b7b"
-START = None          # nœud « cadastre napoléonien » : à relever avec --find
+# « Plans du cadastre napoléonien. » (HAR du 2026-11-23) : fonds ET racine des ids
+ROOT = "f9796c5b-2f92-448b-bae9-3227f36ca1b1"
+START = ROOT
+
+REF_ARK = "pd4386zn9s7j"                          # Allex, tableau d'assemblage
+REF_MEDIA = "df229011-dc18-4b0f-bb17-0b894fe42ab0"
+REF_COTE, REF_ANNEE = "3 P 3256/1", 1811
 
 SOURCE = "Archives départementales de la Drôme"
 LICENCE_AD26 = ("Réutilisation non commerciale, mention « Arch. dép. Drôme, cote » "
@@ -91,19 +104,12 @@ GANDI_CA = os.path.join(HERE, "certs", "gandi_rsa_dv_ca4.pem")
 SKIP_BRANCH_RE = re.compile(r"matrice|[ée]tats?\s+de\s+section|r[ée]nov|remani|"
                             r"mise\s+[àa]\s+jour", re.I)
 ANNEE_MAX = 1870      # au-delà : plan rénové / mis à jour, hors cadastre napoléonien
-# Recherche du nœud de départ
-FIND_RE = re.compile(r"cadastr|napol[ée]on|\b3\s*P\b|plans?\s+parcellaires", re.I)
 
-# Anciennes communes probables du corridor (fusions anciennes, absentes
-# d'ADMIN EXPRESS) : rattachées mais signalées « à confirmer » dans le rapport.
-CANDIDATS_HISTORIQUES = {
-    "Recoubeau": "26262", "Jansac": "26262",
-    "Piégros": "26234", "La Clastre": "26234",
-    "Ponet": "26246",
-    "Blacons": "26183",
-    "Luc": "26167", "Montlaur": "26204", "Montmaur": "26205", "Lesches": "26164",
-    "Aouste": "26011", "Livron": "26165", "Loriol": "26166", "Aix": "26001",
-}
+# Rattachements non confirmés (ajoutés au rapport « à confirmer »). Les formes
+# anciennes vues dans l'arbre (Livron, Loriol, Aouste, Lesches, Montlaur,
+# Montmaur, Recoubeau, Jansac, Piégros, Molières, Ponet-Saint-Auban,
+# Bâtie-des-Fonts) sont dans communes_alias.json["26"].
+CANDIDATS_HISTORIQUES = {}
 
 UUID_RE = re.compile(r"[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}", re.I)
 SLEEP = 1.0           # 1 requête/s : rythme de consultation, pas d'aspiration
@@ -151,7 +157,7 @@ def prime(phpsessid=None):
     if phpsessid:
         session.cookies.set("PHPSESSID", phpsessid, domain=HOST)
     else:
-        session.get(f"{BASE}/ark:/{NAAN}/1r85jlbwtgfk", timeout=30)
+        session.get(f"{BASE}/ark:/{NAAN}/{REF_ARK}", timeout=30)
 
 
 def cached_get(key, url, want_json=True):
@@ -282,42 +288,6 @@ class Resolveur:
             self.a_confirmer.add(f"{titre} → {self.historiques[k]}")
             return self.historiques[k], "historique"
         return None, None
-
-
-# --------------------------------------------------------------------------
-# --find : nœud du cadastre napoléonien dans le cadre de classement
-# --------------------------------------------------------------------------
-def find(max_depth=4, max_nodes=250):
-    """Parcours en largeur du cadre de classement, limité aux branches dont le
-    titre évoque le cadastre (au-delà du niveau des séries)."""
-    sys.stderr.write(f"Recherche du nœud cadastre sous {ROOT} …\n")
-    file, vus, n = deque([(ROOT, 0, "")]), set(), 0
-    candidats = []
-    while file and n < max_nodes:
-        uuid, depth, chemin = file.popleft()
-        if uuid in vus:
-            continue
-        vus.add(uuid)
-        n += 1
-        for k in children(uuid):
-            if k.get("dataType") != "branch":
-                continue
-            titre = (k.get("title") or "").strip()
-            sous = f"{chemin} > {titre}" if chemin else titre
-            pertinent = bool(FIND_RE.search(titre))
-            if pertinent:
-                candidats.append((uuid_of(k), sous))
-                sys.stderr.write(f"  ★ {uuid_of(k)}  {sous}\n")
-            # séries (niveau 1) toutes ouvertes ; ensuite seulement ce qui parle de cadastre
-            if depth + 1 < max_depth and (depth == 0 or pertinent or re.search(r"\bP\b|fonci|finan", titre)):
-                file.append((uuid_of(k), depth + 1, sous))
-    if not candidats:
-        sys.stderr.write("✖ aucun nœud « cadastre » trouvé — ouvrir le cadre de classement dans\n"
-                         f"  un navigateur ({BASE}/ark:/{NAAN}/1r85jlbwtgfk), repérer le nœud et\n"
-                         "  le passer en --start (uuid lu dans l'URL ou l'onglet Réseau).\n")
-        return 1
-    sys.stderr.write("\nRelancer avec --start <uuid> (le plus spécifique : « napoléonien »).\n")
-    return 0
 
 
 # --------------------------------------------------------------------------
@@ -552,8 +522,8 @@ def emit(leaves, out_path, licence_ouverte, meta_corridor, desc):
 
 
 # --------------------------------------------------------------------------
-def check(ark):
-    """Calibrage : ce que le connecteur extrait d'UNE planche (ark)."""
+def check(ark=REF_ARK):
+    """Calibrage : ce que le connecteur extrait d'UNE planche (défaut : Allex, TA)."""
     leaf = {"ark": ark, "content": f"{BASE}/record/{NAAN}/{ark}/content"}
     jpg, manifest, n = media_of(leaf)
     cote, annee, _ = meta_of(leaf)
@@ -569,20 +539,26 @@ def check(ark):
         except requests.RequestException:
             pass
     sys.stderr.write(f"fichier     : {'JPEG ✔' if est_jpeg else 'PAS un JPEG ✖'}\n")
-    p = os.path.join(CACHE_DIR, f"drome_content_{ark}.txt")
-    if est_jpeg and cote:
-        sys.stderr.write("✔ extraction calibrée — noter cet ark comme référence dans "
-                         "to_do/drome/NOTES.md\n")
+    attendu = (f"{BASE}/images/{REF_MEDIA}.jpg", REF_COTE, REF_ANNEE)
+    if ark != REF_ARK:
+        ok = est_jpeg and cote
+    else:
+        ok = est_jpeg and (jpg, cote, annee) == attendu
+    if ok:
+        sys.stderr.write("✔ extraction calibrée\n")
         return 0
-    sys.stderr.write(f"✖ à calibrer : réponse brute gardée dans {p}\n")
+    p = os.path.join(CACHE_DIR, f"drome_content_{ark}.txt")
+    sys.stderr.write(f"✖ à calibrer (attendu {attendu}) : réponse brute dans {p}\n"
+                     "  Si seul le JPEG échoue : ouvrir la visionneuse, relever l'URL de\n"
+                     "  l'image pleine (onglet Réseau) et adapter media_of().\n")
     return 1
 
 
 def main():
     ap = argparse.ArgumentParser(description="Portail Drôme (Mnesys) → seed_drome.sql")
-    ap.add_argument("--find", action="store_true", help="chercher le nœud cadastre")
-    ap.add_argument("--check", metavar="ARK", help="calibrer l'extraction sur une planche")
-    ap.add_argument("--start", default=START, help="uuid du nœud « cadastre napoléonien »")
+    ap.add_argument("--check", nargs="?", const=REF_ARK, metavar="ARK",
+                    help="calibrer l'extraction sur une planche (défaut : Allex, TA)")
+    ap.add_argument("--start", default=START, help="uuid du nœud de départ")
     ap.add_argument("--tout", action="store_true",
                     help="tout le département (SEULEMENT avec l'accord écrit des AD26)")
     ap.add_argument("--licence-ouverte", action="store_true",
@@ -594,12 +570,8 @@ def main():
 
     try:
         prime(args.phpsessid)
-        if args.find:
-            sys.exit(find())
         if args.check:
             sys.exit(check(args.check))
-        if not args.start:
-            sys.exit("✖ --start <uuid> requis : lancer d'abord --find")
 
         meta, corridor_insee, corridor_noms = load_corridor()
         desc = Descente(Resolveur(corridor_noms), corridor_insee, args.tout, args.limit)

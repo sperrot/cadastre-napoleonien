@@ -10,16 +10,21 @@ confluence avec le Rhône (Livron / Loriol), sur 112,7 km.
 |---|---|
 | Portail | Mnesys (Naoned), même logiciel que le Jura et le Doubs |
 | Fonds | formulaire « Cadastre » `search/form/47e6db60…` : « les plans de chaque commune jusqu'en 2002 », **sauf Romans-sur-Isère** (sur le site des archives de la ville, avec états de section et matrices 1825-1908) |
-| Cadre de classement | archdesc `f6e10de9-0e70-4023-8366-c625f2560b7b` = `ark:/24626/1r85jlbwtgfk` ; API `/api/classificationPlan/v1/tree/{uuid}_{uuid}` déclarée dans la page (`#classification-plan-navigation`) |
+| Cadre de classement | archdesc `f6e10de9-0e70-4023-8366-c625f2560b7b` = `ark:/24626/1r85jlbwtgfk` |
+| **Fonds (HAR du 2026-11-23)** | « Plans du cadastre napoléonien. » (an XI-1974), uuid **`f9796c5b-2f92-448b-bae9-3227f36ca1b1`** = `ark:/24626/69437fsmbktg`, aussi racine des ids de l'API (`/api/classificationPlan/v1/children/{nœud}_f9796c5b…`) |
+| Arbre | fonds → **commune** (≈ 370 nœuds, formes anciennes : Livron, Loriol, Aouste, Lesches, Montlaur, Montmaur, Recoubeau, Jansac, Piégros, Molières, Ponet-Saint-Auban, Bâtie-des-Fonts…) → « Cadastre parcellaire. » → planches « Tableau d'assemblage. », « Section A, Bayles (les). ». Quelques communes sont une planche directe (Cheylard, Fiancey, Romans, Molard-Bouchard, Lachamp) |
+| Planche (notice-0) | cote `3 P 3256/1`, date `10 septembre 1811`, « Particularité du document » = échelle `1:20 000` ; média `/ark:/24626/<ark>/<uuid>` (visionneuse), vignette `/images/<uuid>_img-notice.jpg` |
+| Référence | Allex, TA — ark `pd4386zn9s7j`, média `df229011-dc18-4b0f-bb17-0b894fe42ab0` |
 | NAAN | `24626` |
 | Captcha | reCAPTCHA déclaré sur le formulaire de recherche (`data-captcha="recaptcha"`) |
 | FranceArchives | non vérifié (le harvester FA doit tourner en local) |
 | TLS | ⚠️ le serveur **n'envoie pas son certificat intermédiaire** (*Gandi RSA Domain Validation Secure Server CA 4*). Les navigateurs le récupèrent seuls ; `requests` / `curl` échouent (`unable to get local issuer certificate`). L'intermédiaire officiel (crt.sectigo.com, chaîné à *Sectigo Public Server Authentication Root R46*) est versionné dans [`harvest/certs/gandi_rsa_dv_ca4.pem`](../../harvest/certs/gandi_rsa_dv_ca4.pem) et ajouté à certifi par le connecteur : la vérification reste complète. |
 
-Non relevé : le nœud du cadastre napoléonien dans le cadre de classement, et
-la forme exacte d'une planche (uuid média, `/images/<uuid>.jpg` comme au Jura ?).
-L'outil de sécurité de la session Claude a refusé l'appel à l'API interne du
-portail : **les étapes `--find` et `--check` sont à lancer en local**.
+Reste à confirmer en local : l'image pleine en `/images/<uuid>.jpg` (motif du
+Jura ; seule la vignette `_img-notice.jpg` est attestée par le HAR) → `--check`.
+Rejeu hors ligne de l'arbre du HAR : **38/38 communes riveraines** retrouvées,
+40 nœuds descendus (Aix-en-Diois + Molières → Solaure ; Recoubeau + Jansac →
+Recoubeau-Jansac), aucune commune hors corridor ouverte.
 
 ## Licence et CGU — ce qui bloque l'overlay
 
@@ -50,24 +55,17 @@ Conséquences pour le repo :
 
 ```bash
 pip install requests certifi
-python harvest/harvest_drome.py --find                      # 1. nœud « cadastre napoléonien »
-python harvest/harvest_drome.py --check <ark d'une planche>  # 2. calibrer image / cote / année
-python harvest/harvest_drome.py --start <uuid> --limit 20    # 3. essai
-python harvest/harvest_drome.py --start <uuid>               # 4. corridor → harvest/seed_drome.sql
+python harvest/harvest_drome.py --check        # 1. auto-test sur Allex, TA (JPEG, cote, année)
+python harvest/harvest_drome.py --limit 20     # 2. essai
+python harvest/harvest_drome.py                # 3. corridor → harvest/seed_drome.sql
 python harvest/load_seed_to_supabase.py --replace-dept 26 harvest/seed_drome.sql
 ```
-
-Une fois `--find` et `--check` passés, reporter ici l'uuid de départ et l'ark de
-référence, et figer l'uuid dans `START` (comme pour le Jura).
 
 Le rapport de fin de run liste :
 - les communes riveraines **non couvertes** (pk + INSEE) ;
 - les **nœuds-communes au nom inconnu** (anciennes communes) → `communes_alias.json["26"]` ;
-- les rattachements via `CANDIDATS_HISTORIQUES` **à confirmer** (Recoubeau,
-  Jansac, Piégros, La Clastre, Ponet, Blacons, et les formes courtes Luc,
-  Montlaur, Montmaur, Lesches, Aouste, Livron, Loriol, Aix). Les noms ambigus
-  dans le département (Beaumont, Saint-Sauveur, Saint-Auban, Mirabel) sont
-  volontairement exclus.
+- les rattachements via `CANDIDATS_HISTORIQUES` à confirmer (vide : les formes
+  anciennes vues dans l'arbre sont désormais dans `communes_alias.json["26"]`).
 
 ## Corridor de la rivière
 

@@ -281,9 +281,9 @@ entier. Deux scripts :
 ```bash
 pip install requests shapely pyproj certifi
 python harvest/corridor_riviere.py                       # (déjà versionné ; à relancer si besoin)
-python harvest/harvest_drome.py --find                   # nœud du cadastre napoléonien
-python harvest/harvest_drome.py --check <ark>            # calibrage sur une planche
-python harvest/harvest_drome.py --start <uuid>
+python harvest/harvest_drome.py --check                  # auto-test : Allex, TA
+python harvest/harvest_drome.py --limit 20               # essai
+python harvest/harvest_drome.py                          # corridor → seed_drome.sql
 python harvest/load_seed_to_supabase.py --replace-dept 26 harvest/seed_drome.sql
 ```
 
