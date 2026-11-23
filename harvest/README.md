@@ -265,3 +265,42 @@ python harvest/load_seed_to_supabase.py harvest/seed_charente.sql
   saisies à la main dans `communes_alias.json` — repérables au motif de cote
   `NA`/`NB` (deux anciennes communes, une commune actuelle : 47A Blanzaguet +
   47B Saint-Cybard-le-Peyrat → Blanzaguet-Saint-Cybard).
+
+---
+
+# Drôme (26) — corridor de la rivière, portail Mnesys `archives.ladrome.fr`
+
+Objectif : le cadastre napoléonien **de la rivière Drôme**, pas du département
+entier. Deux scripts :
+
+| Script | Rôle |
+|---|---|
+| `corridor_riviere.py` | tracé BD TOPO de la rivière + communes ADMIN EXPRESS à 100 m du lit → `corridor_drome.json` (38 communes, pk depuis la source) et `web/data/riviere_drome.geojson` (calque de la carte). Générique : `--toponyme`, `--cleabs`, `--dept`, `--slug`. |
+| `harvest_drome.py` | connecteur Mnesys (même API que `harvest_jura.py`) qui ne descend que les communes du corridor → `seed_drome.sql`. |
+
+```bash
+pip install requests shapely pyproj certifi
+python harvest/corridor_riviere.py                       # (déjà versionné ; à relancer si besoin)
+python harvest/harvest_drome.py --find                   # nœud du cadastre napoléonien
+python harvest/harvest_drome.py --check <ark>            # calibrage sur une planche
+python harvest/harvest_drome.py --start <uuid>
+python harvest/load_seed_to_supabase.py --replace-dept 26 harvest/seed_drome.sql
+```
+
+## Trois points propres à ce portail
+
+- **CGU** : « aucune extraction intégrale ou substantielle » sans accord écrit.
+  D'où le filtre corridor par défaut, 1 requête/s, et `--tout` réservé à
+  l'accord. Réutilisation non commerciale seulement → `overlay_ok = false`,
+  `statut = 'lien'` tant que `--licence-ouverte` n'est pas justifié par écrit.
+- **Certificat intermédiaire absent** côté serveur : fourni dans
+  `harvest/certs/gandi_rsa_dv_ca4.pem` et ajouté à certifi. Ne jamais
+  contourner par `verify=False`.
+- **Filtre corridor étanche** : une branche au nom inconnu, sœur de communes
+  reconnues, est traitée comme une commune (ancienne) et **non descendue** ;
+  elle est listée dans le rapport pour enrichir `communes_alias.json["26"]`.
+  Les années > 1870 (plans rénovés, mises à jour jusqu'en 2002) sont écartées
+  planche par planche, pas par branche (un nœud « 1808-2002 » contient aussi
+  le napoléonien).
+
+Détail et modèle de demande d'accord : [`to_do/drome/NOTES.md`](../to_do/drome/NOTES.md).

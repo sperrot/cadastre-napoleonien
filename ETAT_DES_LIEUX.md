@@ -33,7 +33,7 @@ Cas mixtes classés au niveau le plus haut atteint, précisé en commentaire
 | **Diffusion exploitable hors visualiseur (≥ N3)** | **18 / 95** | **19 %** |
 | IIIF disponible ou générable identifié | 15 / 95 | 16 % |
 | Licence ouverte (LO/ODbL/équiv.) sur au moins une source | 16 / 95 | 17 % |
-| Lignes vérifiées en réel (✅) | 20 / 95 | 21 % |
+| Lignes vérifiées en réel (✅) | 21 / 95 | 22 % |
 
 Familles de visualiseurs AD identifiées (candidates aux pipelines du repo) : **Ligeo** 24 · **Mnesys** 16 · **Arkothèque** 13 · **Archinoë** 6 · **Bach** 5 · **THOT** 3 · **Pleade** 1.
 
@@ -65,7 +65,7 @@ Familles de visualiseurs AD identifiées (candidates aux pipelines du repo) : **
 | 23 | Creuse | [AD (Arkothèque)](https://archives.creuse.fr/rechercher/archives-numerisees/cadastre-napoleonien) | JPG (visionneuse) | N2 ⚠️ | À vérifier |  |
 | 24 | Dordogne | [AD (Arkothèque)](https://archives.dordogne.fr/archives-numerisees/cadastre-napoleonien) | JPG (visionneuse) | N2 ⚠️ | À vérifier |  |
 | 25 | Doubs | [data.gouv + AD (Mnesys)](https://www.data.gouv.fr/datasets/planches-du-cadastre-napoleonien) | JPG téléchargeable, CSV/JSON, IIIF (worker repo) | N3 ✅ | ODbL | ~5 700 planches JPEG en open data ; 633 feuilles seedées (worker JPEG→IIIF) ; visionneuse Mnesys sans manifeste accessible |
-| 26 | Drôme | [AD (Mnesys)](https://archives.ladrome.fr/search/form/47e6db60-8648-42ca-8415-539025d51807) | ARK (visionneuse) | N2 ⚠️ | À vérifier |  |
+| 26 | Drôme | [AD (Mnesys)](https://archives.ladrome.fr/search/form/47e6db60-8648-42ca-8415-539025d51807) | ARK (visionneuse) | N2 ✅ | Réutilisation non commerciale avec mention (CGU AD26) ; commerciale sous licence avec redevance | Plans de chaque commune en ligne jusqu'en 2002 (sauf Romans-sur-Isère) ; même API Mnesys que le Jura ; CGU : pas d'extraction substantielle sans accord écrit → connecteur ciblé sur le **corridor de la rivière Drôme** (38 communes, [`harvest_drome.py`](harvest/harvest_drome.py), [notes](to_do/drome/NOTES.md)) ; overlay soumis à accord écrit |
 | 27 | Eure | [AD (portail)](https://archives.eure.fr/search?preset=106&view=list) | JPG (visionneuse) | N2 ⚠️ | À vérifier |  |
 | 28 | Eure-et-Loir | [AD (Arkothèque)](https://archives28.fr/archives-et-inventaires-en-ligne/fonds-iconographiques/plans-du-cadastre-napoleonien-3-p) | JPG (visionneuse) | N2 ⚠️ | À vérifier |  |
 | 29 | Finistère | [Open data Région Bretagne + AD](https://archives.finistere.fr/espace-de-recherche-dans-le-cadastre) | SHP, WMS, WFS + JPG | N5 ✅ | Licence Ouverte 2.0 | Contours vectorisés (région) ; espace cadastre AD ; Brest métropole diffuse aussi un WMS |

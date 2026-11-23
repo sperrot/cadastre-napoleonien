@@ -223,6 +223,37 @@ header .tagline { margin: 2px 0 0; font-size: .8rem; color: var(--muted); }
 .overlay-row input[type="range"] { width: 100%; accent-color: var(--accent); }
 .overlay-row input[type="range"]:disabled { opacity: .4; }
 
+/* Corridor d'une rivière : communes riveraines, de la source à la confluence */
+.corridor-list { max-width: 230px; color: var(--ink); }
+.corridor-list summary { cursor: pointer; color: var(--muted); }
+.corridor-list ol {
+  list-style: none;
+  margin: 4px 0 0;
+  padding: 0;
+  max-height: 40vh;
+  overflow-y: auto;
+}
+.corridor-list button {
+  display: flex;
+  gap: 6px;
+  width: 100%;
+  padding: 2px 4px;
+  font: inherit;
+  text-align: left;
+  color: inherit;
+  background: none;
+  border: 0;
+  border-radius: 4px;
+  cursor: pointer;
+}
+.corridor-list button:hover { background: var(--accent-soft); }
+.corridor-list .pk {
+  flex: 0 0 3.2em;
+  text-align: right;
+  color: #1565c0;
+  font-variant-numeric: tabular-nums;
+}
+
 /* --- Légende (état du contour communal) --- */
 #legend,
 #legend-dept {

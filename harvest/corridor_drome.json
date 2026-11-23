@@ -1,0 +1,288 @@
+{
+ "riviere": "la Drôme",
+ "cleabs": "COURDEAU0000002000803141",
+ "longueur_km": 112.7,
+ "departement": "26",
+ "tampon_m": 100,
+ "source": "IGN — BD TOPO® (cours_d_eau) + ADMIN EXPRESS COG, Géoplateforme WFS",
+ "communes": [
+  {
+   "insee": "26030",
+   "nom": "La Bâtie-des-Fonds",
+   "pk_km": 2.7,
+   "longueur_riveraine_m": 4679,
+   "relation": "traversée"
+  },
+  {
+   "insee": "26361",
+   "nom": "Valdrôme",
+   "pk_km": 6.6,
+   "longueur_riveraine_m": 4634,
+   "relation": "traversée"
+  },
+  {
+   "insee": "26255",
+   "nom": "Les Prés",
+   "pk_km": 11.7,
+   "longueur_riveraine_m": 4502,
+   "relation": "traversée"
+  },
+  {
+   "insee": "26040",
+   "nom": "Beaurières",
+   "pk_km": 15.3,
+   "longueur_riveraine_m": 2090,
+   "relation": "traversée"
+  },
+  {
+   "insee": "26076",
+   "nom": "Charens",
+   "pk_km": 17.3,
+   "longueur_riveraine_m": 2962,
+   "relation": "traversée"
+  },
+  {
+   "insee": "26164",
+   "nom": "Lesches-en-Diois",
+   "pk_km": 19.9,
+   "longueur_riveraine_m": 1959,
+   "relation": "traversée"
+  },
+  {
+   "insee": "26036",
+   "nom": "Beaumont-en-Diois",
+   "pk_km": 20.9,
+   "longueur_riveraine_m": 3754,
+   "relation": "traversée"
+  },
+  {
+   "insee": "26167",
+   "nom": "Luc-en-Diois",
+   "pk_km": 26.4,
+   "longueur_riveraine_m": 10242,
+   "relation": "traversée"
+  },
+  {
+   "insee": "26204",
+   "nom": "Montlaur-en-Diois",
+   "pk_km": 30.0,
+   "longueur_riveraine_m": 1434,
+   "relation": "traversée"
+  },
+  {
+   "insee": "26178",
+   "nom": "Menglon",
+   "pk_km": 32.3,
+   "longueur_riveraine_m": 0,
+   "relation": "bordière (62 m)"
+  },
+  {
+   "insee": "26262",
+   "nom": "Recoubeau-Jansac",
+   "pk_km": 33.9,
+   "longueur_riveraine_m": 3815,
+   "relation": "traversée"
+  },
+  {
+   "insee": "26025",
+   "nom": "Barnave",
+   "pk_km": 36.1,
+   "longueur_riveraine_m": 684,
+   "relation": "traversée"
+  },
+  {
+   "insee": "26205",
+   "nom": "Montmaur-en-Diois",
+   "pk_km": 37.1,
+   "longueur_riveraine_m": 480,
+   "relation": "traversée"
+  },
+  {
+   "insee": "26327",
+   "nom": "Saint-Roman",
+   "pk_km": 37.1,
+   "longueur_riveraine_m": 820,
+   "relation": "traversée"
+  },
+  {
+   "insee": "26001",
+   "nom": "Solaure en Diois",
+   "pk_km": 40.0,
+   "longueur_riveraine_m": 4415,
+   "relation": "traversée",
+   "anciennes_communes": [
+    {
+     "insee": "26187",
+     "nom": "Molières-Glandaz",
+     "nature": "COMD"
+    },
+    {
+     "insee": "26001",
+     "nom": "Aix-en-Diois",
+     "nature": "COMD"
+    }
+   ]
+  },
+  {
+   "insee": "26159",
+   "nom": "Laval-d'Aix",
+   "pk_km": 41.4,
+   "longueur_riveraine_m": 227,
+   "relation": "traversée"
+  },
+  {
+   "insee": "26113",
+   "nom": "Die",
+   "pk_km": 47.2,
+   "longueur_riveraine_m": 9080,
+   "relation": "traversée"
+  },
+  {
+   "insee": "26246",
+   "nom": "Ponet-et-Saint-Auban",
+   "pk_km": 52.2,
+   "longueur_riveraine_m": 1619,
+   "relation": "traversée"
+  },
+  {
+   "insee": "26299",
+   "nom": "Sainte-Croix",
+   "pk_km": 54.6,
+   "longueur_riveraine_m": 3051,
+   "relation": "traversée"
+  },
+  {
+   "insee": "26248",
+   "nom": "Pontaix",
+   "pk_km": 58.4,
+   "longueur_riveraine_m": 4926,
+   "relation": "traversée"
+  },
+  {
+   "insee": "26027",
+   "nom": "Barsac",
+   "pk_km": 61.6,
+   "longueur_riveraine_m": 1010,
+   "relation": "traversée"
+  },
+  {
+   "insee": "26019",
+   "nom": "Aurel",
+   "pk_km": 64.0,
+   "longueur_riveraine_m": 2131,
+   "relation": "traversée"
+  },
+  {
+   "insee": "26368",
+   "nom": "Vercheny",
+   "pk_km": 64.4,
+   "longueur_riveraine_m": 2616,
+   "relation": "traversée"
+  },
+  {
+   "insee": "26122",
+   "nom": "Espenel",
+   "pk_km": 68.0,
+   "longueur_riveraine_m": 4119,
+   "relation": "traversée"
+  },
+  {
+   "insee": "26289",
+   "nom": "Saillans",
+   "pk_km": 72.8,
+   "longueur_riveraine_m": 6044,
+   "relation": "traversée"
+  },
+  {
+   "insee": "26328",
+   "nom": "Saint-Sauveur-en-Diois",
+   "pk_km": 75.0,
+   "longueur_riveraine_m": 488,
+   "relation": "traversée"
+  },
+  {
+   "insee": "26015",
+   "nom": "Aubenasson",
+   "pk_km": 76.5,
+   "longueur_riveraine_m": 1611,
+   "relation": "traversée"
+  },
+  {
+   "insee": "26183",
+   "nom": "Mirabel-et-Blacons",
+   "pk_km": 80.6,
+   "longueur_riveraine_m": 4068,
+   "relation": "traversée"
+  },
+  {
+   "insee": "26234",
+   "nom": "Piégros-la-Clastre",
+   "pk_km": 81.2,
+   "longueur_riveraine_m": 5124,
+   "relation": "traversée"
+  },
+  {
+   "insee": "26011",
+   "nom": "Aouste-sur-Sye",
+   "pk_km": 85.8,
+   "longueur_riveraine_m": 2952,
+   "relation": "traversée"
+  },
+  {
+   "insee": "26108",
+   "nom": "Crest",
+   "pk_km": 89.6,
+   "longueur_riveraine_m": 4981,
+   "relation": "traversée"
+  },
+  {
+   "insee": "26115",
+   "nom": "Divajeu",
+   "pk_km": 91.8,
+   "longueur_riveraine_m": 422,
+   "relation": "traversée"
+  },
+  {
+   "insee": "26065",
+   "nom": "Chabrillan",
+   "pk_km": 93.8,
+   "longueur_riveraine_m": 2420,
+   "relation": "traversée"
+  },
+  {
+   "insee": "26125",
+   "nom": "Eurre",
+   "pk_km": 94.5,
+   "longueur_riveraine_m": 1363,
+   "relation": "traversée"
+  },
+  {
+   "insee": "26006",
+   "nom": "Allex",
+   "pk_km": 98.9,
+   "longueur_riveraine_m": 1900,
+   "relation": "traversée"
+  },
+  {
+   "insee": "26144",
+   "nom": "Grane",
+   "pk_km": 99.1,
+   "longueur_riveraine_m": 4158,
+   "relation": "traversée"
+  },
+  {
+   "insee": "26165",
+   "nom": "Livron-sur-Drôme",
+   "pk_km": 107.1,
+   "longueur_riveraine_m": 6235,
+   "relation": "traversée"
+  },
+  {
+   "insee": "26166",
+   "nom": "Loriol-sur-Drôme",
+   "pk_km": 107.1,
+   "longueur_riveraine_m": 6493,
+   "relation": "traversée"
+  }
+ ]
+}

@@ -228,7 +228,18 @@ const OVERLAYS = {
     // de toute façon à cette échelle.
     minzoom: 10,
   },
+  // Calque vectoriel (GeoJSON) : objectif « cadastre napoléonien de la rivière
+  // Drôme ». Tracé BD TOPO + communes riveraines, produits par
+  // harvest/corridor_riviere.py. Cliquer une commune ouvre ses plans.
+  riviereDrome: {
+    label: "Rivière Drôme — communes riveraines",
+    geojson: "data/riviere_drome.geojson",
+    attribution: "© IGN — BD TOPO®, ADMIN EXPRESS",
+    opacity: 0.9,
+    bounds: [[4.75, 44.49], [5.67, 44.79]],
+  },
 };
+const isVector = (ov) => Boolean(ov.geojson);
 
 /* --- Carte --- */
 const baseStyle = { version: 8, sources: {}, layers: [] };
@@ -251,6 +262,7 @@ for (const [id, bm] of Object.entries(BASEMAPS)) {
 // Les calques viennent après les fonds (donc au-dessus), mais avant les
 // couches départements/communes ajoutées au `load`.
 for (const [id, ov] of Object.entries(OVERLAYS)) {
+  if (isVector(ov)) continue; // ajouté au `load`, au-dessus des départements
   baseStyle.sources[`ov-${id}`] = {
     type: "raster",
     tiles: ov.tiles,
@@ -316,21 +328,127 @@ if (overlayListEl) {
     const cb = e.target.closest('input[type="checkbox"][data-overlay]');
     if (!cb) return;
     const id = cb.dataset.overlay;
-    quandStylePret(() =>
-      map.setLayoutProperty(`overlay-${id}`, "visibility", cb.checked ? "visible" : "none")
-    );
+    quandStylePret(() => {
+      for (const layerId of overlayLayerIds(id))
+        map.setLayoutProperty(layerId, "visibility", cb.checked ? "visible" : "none");
+    });
+    if (isVector(OVERLAYS[id])) toggleCorridorList(id, cb.checked);
     const slider = overlayListEl.querySelector(`.overlay-opacity[data-overlay="${id}"]`);
     if (slider) slider.disabled = !cb.checked;
     // premier affichage : cadrer sur l'emprise du calque
-    if (cb.checked && OVERLAYS[id].bounds) map.fitBounds(OVERLAYS[id].bounds, { padding: 30 });
+    // (à gauche, de quoi dégager le panneau des calques et la liste du corridor)
+    if (cb.checked && OVERLAYS[id].bounds)
+      map.fitBounds(OVERLAYS[id].bounds, {
+        padding: isVector(OVERLAYS[id]) ? { top: 30, bottom: 30, right: 30, left: 300 } : 30,
+      });
   });
   overlayListEl.addEventListener("input", (e) => {
     const sl = e.target.closest(".overlay-opacity[data-overlay]");
     if (!sl) return;
-    quandStylePret(() =>
-      map.setPaintProperty(`overlay-${sl.dataset.overlay}`, "raster-opacity", +sl.value / 100)
-    );
+    const id = sl.dataset.overlay;
+    quandStylePret(() => {
+      if (!isVector(OVERLAYS[id]))
+        return map.setPaintProperty(`overlay-${id}`, "raster-opacity", +sl.value / 100);
+      const o = +sl.value / 100;
+      map.setPaintProperty(`overlay-${id}`, "line-opacity", o);
+      map.setPaintProperty(`overlay-${id}-contours`, "line-opacity", o);
+      map.setPaintProperty(`overlay-${id}-communes`, "fill-opacity", 0.15 * o);
+    });
   });
+}
+
+/* --- Calques vectoriels (corridor d'une rivière) --- */
+function overlayLayerIds(id) {
+  return isVector(OVERLAYS[id])
+    ? [`overlay-${id}-communes`, `overlay-${id}-contours`, `overlay-${id}`]
+    : [`overlay-${id}`];
+}
+
+function addVectorOverlays() {
+  for (const [id, ov] of Object.entries(OVERLAYS)) {
+    if (!isVector(ov)) continue;
+    map.addSource(`ov-${id}`, { type: "geojson", data: ov.geojson, attribution: ov.attribution });
+    const hidden = { visibility: "none" };
+    map.addLayer({
+      id: `overlay-${id}-communes`,
+      type: "fill",
+      source: `ov-${id}`,
+      filter: ["==", ["get", "kind"], "commune"],
+      layout: hidden,
+      paint: { "fill-color": "#3b7fb6", "fill-opacity": 0.15 * ov.opacity },
+    });
+    map.addLayer({
+      id: `overlay-${id}-contours`,
+      type: "line",
+      source: `ov-${id}`,
+      filter: ["==", ["get", "kind"], "commune"],
+      layout: hidden,
+      paint: { "line-color": "#3b7fb6", "line-width": 1, "line-opacity": ov.opacity },
+    });
+    map.addLayer({
+      id: `overlay-${id}`,
+      type: "line",
+      source: `ov-${id}`,
+      filter: ["==", ["get", "kind"], "riviere"],
+      layout: { ...hidden, "line-cap": "round", "line-join": "round" },
+      paint: {
+        "line-color": "#1565c0",
+        "line-width": ["interpolate", ["linear"], ["zoom"], 8, 2, 13, 5],
+        "line-opacity": ov.opacity,
+      },
+    });
+  }
+}
+
+/* Liste des communes riveraines, de la source à la confluence (pk croissant).
+ * Un clic ouvre la commune comme une recherche. */
+async function toggleCorridorList(id, show) {
+  let box = document.getElementById(`corridor-${id}`);
+  if (!show) {
+    if (box) box.hidden = true;
+    return;
+  }
+  if (!box) {
+    box = document.createElement("details");
+    box.id = `corridor-${id}`;
+    box.className = "corridor-list";
+    box.open = true;
+    const row = overlayListEl.querySelector(`input[data-overlay="${id}"]`).closest(".overlay-row");
+    row.appendChild(box);
+    try {
+      const fc = await (await fetch(OVERLAYS[id].geojson)).json();
+      const riv = fc.features.find((f) => f.properties.kind === "riviere");
+      const communes = fc.features
+        .filter((f) => f.properties.kind === "commune")
+        .map((f) => f.properties)
+        .sort((a, b) => a.pk_km - b.pk_km);
+      box.innerHTML =
+        `<summary>${communes.length} communes · ${riv ? riv.properties.longueur_km : "?"} km, ` +
+        `de la source au Rhône</summary><ol>` +
+        communes
+          .map(
+            (c) =>
+              `<li><button type="button" data-insee="${c.insee}">` +
+              `<span class="pk">${c.pk_km.toFixed(0)} km</span> ${escape(c.nom)}</button></li>`
+          )
+          .join("") +
+        `</ol>`;
+      box.addEventListener("click", async (e) => {
+        const btn = e.target.closest("button[data-insee]");
+        if (!btn) return;
+        try {
+          const res = await fetch(`${GEO_API}/${btn.dataset.insee}?fields=${COMMUNE_FIELDS}`);
+          if (res.ok) selectCommune(await res.json());
+        } catch (err) {
+          console.error("geo.api.gouv.fr (corridor):", err);
+        }
+      });
+    } catch (err) {
+      box.innerHTML = "<summary>Liste des communes indisponible</summary>";
+      console.error("corridor:", err);
+    }
+  }
+  box.hidden = false;
 }
 
 /* ------------------------------------------------------------------ *
@@ -414,6 +532,7 @@ map.on("load", () => {
       "line-width": 2,
     },
   });
+  addVectorOverlays();
 
   map.addSource("commune", {
     type: "geojson",
